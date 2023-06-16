@@ -36,6 +36,7 @@ namespace Rivet {
       else if ( getOption("ALG") == "GHS" ) flavAlg = GHS;
       else if ( getOption("ALG") == "SDF" ) flavAlg = SDF;
       else if ( getOption("ALG") == "AKT" )  flavAlg = AKT;
+      else if ( getOption("ALG") == "TAG" )  flavAlg = TAG;
       else {
         cout<<"unkown flavour algorithm '"<<getOption("ALG")<<"'.";
         exit(1);
@@ -188,6 +189,13 @@ namespace Rivet {
 	}
       }
 
+      
+      Jets goodjets;
+      Jets jb_final;
+      double Ht = 0;
+
+
+      if(flavAlg != TAG){
 
       // NB. Veto has already been applied on leptons and photons used for dressing
 
@@ -246,12 +254,9 @@ namespace Rivet {
       //const Jets& jets= jets_unordered.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30);
 
       // Perform lepton-jet overlap and HT calculation
-      double Ht = 0;
 
 
 
-      Jets goodjets;
-      Jets jb_final;
 
       for( auto j: jets){
 	if(j.perp()>30 && std::abs(j.eta())<2.4) goodjets.push_back(j);
@@ -261,10 +266,19 @@ namespace Rivet {
       //identification of bjets
       for (unsigned int i=0; i<goodjets.size(); i++ ) {
 	Ht += goodjets[i].pT();
-	const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;
+        const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;	
 	if (btagged) jb_final.push_back(goodjets[i]);
         //if ( j.bTagged() ) { jb_final.push_back(j); }
 	//if  FlavHistory::current_flavour_of(jets[i]);
+      }
+      }else{
+	const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
+	goodjets = fj.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30*GeV);
+
+	for (const Jet& j : goodjets) {
+	  if ( j.bTagged() ) { jb_final.push_back(j); }
+	}
+
       }
       // cout<<flavAlgName()<<" "<<"goodjets: "<<goodjets.size()<<", btagged: "<<jb_final.size()<<"\n";
 
@@ -451,7 +465,8 @@ namespace Rivet {
       CMP = 1,
       GHS = 2,
       SDF = 3,
-      AKT = 4
+      AKT = 4,
+      TAG = 5, 
     };
 
     std::string flavAlgName() {
@@ -460,6 +475,7 @@ namespace Rivet {
       else if(flavAlg == GHS) return "GHS";
       else if(flavAlg == SDF) return "SDF";
       else if(flavAlg == AKT) return "AKT";
+      else if(flavAlg == TAG) return "TAG";
       else return "unknown";
     }
   };
