@@ -261,7 +261,7 @@ namespace Rivet {
       //identification of bjets
       for (unsigned int i=0; i<goodjets.size(); i++ ) {
 	Ht += goodjets[i].pT();
-	const bool btagged =  (FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;
+	const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;
 	if (btagged) jb_final.push_back(goodjets[i]);
         //if ( j.bTagged() ) { jb_final.push_back(j); }
 	//if  FlavHistory::current_flavour_of(jets[i]);
