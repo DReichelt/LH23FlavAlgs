@@ -17,6 +17,29 @@ using namespace fastjet::contrib;
 
 namespace Rivet {
 
+
+  class FinalSPPartons : public FinalState {
+    /// Final state accessing the intermediate partonic finals state
+    /// that can be traced back to the hard process
+    /// based on code form arXiv:2012.09574, arXiv:2112.09545
+  public:
+
+    /// Constructor
+    FinalSPPartons(const Cut& c=Cuts::open())
+       : FinalState(c) { }
+
+    /// Clone method
+    DEFAULT_RIVET_PROJ_CLONE(FinalSPPartons);
+
+    /// Do the calculation
+    void project(const Event& e) override;
+
+  protected:
+    /// Cut-applying method overload
+    bool accept(const Particle& p) const override;
+  };
+
+
   class FlavAlgAnalysis : public Analysis {
   public:
 
@@ -43,7 +66,6 @@ namespace Rivet {
       }
 
       FinalState fs; ///< @todo No cuts?
-      VisibleFinalState visfs(fs);
 
       ZFinder zeeFinder(fs, Cuts::abseta < 2.4 && Cuts::pT > 20*GeV, PID::ELECTRON, 71.0*GeV, 111.0*GeV, 0.1 );
       declare(zeeFinder, "ZeeFinder");
@@ -51,17 +73,25 @@ namespace Rivet {
       ZFinder zmumuFinder(fs, Cuts::abseta < 2.4 && Cuts::pT > 20*GeV, PID::MUON, 71.0*GeV, 111.0*GeV, 0.1 );
       declare(zmumuFinder, "ZmumuFinder");
 
-      VetoedFinalState jetConstits(visfs);
-      jetConstits.addVetoOnThisFinalState(zeeFinder);
-      jetConstits.addVetoOnThisFinalState(zmumuFinder);
-
       double R = 0.5;
-      FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
-      declare(akt05Jets, "AntiKt05Jets");
-      declare(jetConstits, "jetConstits");
 
-
-
+      VetoedFinalState jetConstits = VetoedFinalState(FinalSPPartons());
+      if( getOption("LEVEL","HADRON") == "HADRON") {
+        VetoedFinalState jetConstits = VetoedFinalState(VisibleFinalState(fs));
+        jetConstits.addVetoOnThisFinalState(zeeFinder);
+        jetConstits.addVetoOnThisFinalState(zmumuFinder);
+        declare(jetConstits, "jetConstits");
+        FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
+        declare(akt05Jets, "AntiKt05Jets");
+      }
+      else {
+        VetoedFinalState jetConstits = VetoedFinalState(FinalSPPartons());
+        jetConstits.addVetoOnThisFinalState(zeeFinder);
+        jetConstits.addVetoOnThisFinalState(zmumuFinder);
+        declare(jetConstits, "jetConstits");
+        FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
+        declare(akt05Jets, "AntiKt05Jets");
+      }
 
       // we start with a base jet definition (should be either
       // antikt_algorithm or cambridge_algorithm, or their e+e- variants)
@@ -71,13 +101,13 @@ namespace Rivet {
 
       if(flavAlg == IFN) {
         // And then we set up the IFN_Plugin that builds on the base_jet_def
-        // The main free parameter, alpha, in the uij distance, 
+        // The main free parameter, alpha, in the uij distance,
         //   uij = max(pt_i, pt_j)^alpha min(pt_i, pt_j)^(2-alpha) Omega_ij
         double alpha = 2.0;
         // The parameter that sets the nature of the Omega rapidity term;
         // only change the default of 3-alpha if you are sure you know what you are doing
         double omega = 3.0 - alpha;
-        // The flavour summation scheme; should be one of 
+        // The flavour summation scheme; should be one of
         //   - FlavRecombiner::net
         //   - FlavRecombiner::modulo_2
         FlavRecombiner::FlavSummation flav_summation = FlavRecombiner::net;
@@ -109,7 +139,9 @@ namespace Rivet {
         GHS_ptcut = 15.0; // < overall ptcut
       }
       else if(flavAlg == SDF) {
-        // eventually might set parameters here
+        double zcut = 0.1;
+        double beta = 1;
+        sdFlavCalc = SDFlavourCalc(beta,zcut,R);
       }
       else if(flavAlg == AKT) {
         flav_jet_def = base_jet_def;
@@ -189,7 +221,7 @@ namespace Rivet {
 	}
       }
 
-      
+
       Jets goodjets;
       Jets jb_final;
       double Ht = 0;
@@ -197,79 +229,79 @@ namespace Rivet {
 
       if(flavAlg != TAG){
 
-      // NB. Veto has already been applied on leptons and photons used for dressing
+        // NB. Veto has already been applied on leptons and photons used for dressing
 
-      const FinalState& jetConstits_flav= applyProjection<FinalState>(event, "jetConstits");
+        const FinalState& jetConstits_flav= applyProjection<FinalState>(event, "jetConstits");
 
-      if(debug){
-	std::cout<<"~~~~~~~~~~~~~Projection \n";
-	for (unsigned int i=0; i< jetConstits_flav.particles().size(); i++){
-	  std::cout<< jetConstits_flav.particles()[i]<<std::endl;
-	}
-      }
-
-
-
-      PseudoJets fj_flav = FastJets::mkClusterInputs(jetConstits_flav.particles());
-      for (unsigned int i=0; i<  fj_flav.size(); i++){
-	//	std::cout<<fj_flav[i].description()<<"\n";
-	const int pdgid = jetConstits_flav.particles()[i].pid();
-	fj_flav[i].set_user_info(new  fastjet::contrib::FlavHistory(pdgid));
-      }
-
-
-      if(debug){
-	std::cout<<"Convert FS into pseudojets \n";
-	std::cout<<"~~~~~~~~~ FS \n";
-
-	for (unsigned int i=0; i<  fj_flav.size(); i++){
-	  //	std::cout<<fj_flav[i].description()<<"\n";
-	  std::cout<<"pseudo jet rap="<<fj_flav[i].rap()<<" pT="<<fj_flav[i].perp() <<" flav= "<< FlavHistory::current_flavour_of(fj_flav[i]).description()<<"\n";
-	}
-
-	std::cout<<"user info flav done \n";
-	std::cout<<"jet def descr = \n"<< flav_jet_def.description()<<"\n";
-	std::cout<<"jet def descr = \n"<< base_jet_def.description()<<"\n";
-      }
-
-
-      vector<PseudoJet> base_jets = sorted_by_pt(base_jet_def(fj_flav));
-      vector<PseudoJet> flav_pseudojets;
-      if(flavAlg == IFN || flavAlg == CMP) {
-        flav_pseudojets = sorted_by_pt(flav_jet_def(fj_flav));
-      }
-      else if(flavAlg == GHS) {
-        flav_pseudojets = run_GHS(base_jets, GHS_ptcut,
-                                  GHS_beta, GHS_zcut, GHS_Rcut, GHS_alpha, GHS_omega);
-      }
-      else if(flavAlg == SDF) {
-        flav_pseudojets = base_jets;
-        sdFlavCalc(flav_pseudojets);
-      }
-      else if(flavAlg == AKT) {
-        flav_pseudojets = base_jets;
-      }
-
-      const Jets& jets = FastJets::mkJets(flav_pseudojets, jetConstits_flav.particles());
-      //const Jets& jets= jets_unordered.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30);
-
-      // Perform lepton-jet overlap and HT calculation
+        if(debug){
+          std::cout<<"~~~~~~~~~~~~~Projection \n";
+          for (unsigned int i=0; i< jetConstits_flav.particles().size(); i++){
+            std::cout<< jetConstits_flav.particles()[i]<<std::endl;
+          }
+        }
 
 
 
+        PseudoJets fj_flav = FastJets::mkClusterInputs(jetConstits_flav.particles());
+        for (unsigned int i=0; i<  fj_flav.size(); i++){
+          //	std::cout<<fj_flav[i].description()<<"\n";
+          const int pdgid = jetConstits_flav.particles()[i].pid();
+          fj_flav[i].set_user_info(new  fastjet::contrib::FlavHistory(pdgid));
+        }
 
-      for( auto j: jets){
-	if(j.perp()>30 && std::abs(j.eta())<2.4) goodjets.push_back(j);
-      }
+
+        if(debug){
+          std::cout<<"Convert FS into pseudojets \n";
+          std::cout<<"~~~~~~~~~ FS \n";
+
+          for (unsigned int i=0; i<  fj_flav.size(); i++){
+            //	std::cout<<fj_flav[i].description()<<"\n";
+            std::cout<<"pseudo jet rap="<<fj_flav[i].rap()<<" pT="<<fj_flav[i].perp() <<" flav= "<< FlavHistory::current_flavour_of(fj_flav[i]).description()<<"\n";
+          }
+
+          std::cout<<"user info flav done \n";
+          std::cout<<"jet def descr = \n"<< flav_jet_def.description()<<"\n";
+          std::cout<<"jet def descr = \n"<< base_jet_def.description()<<"\n";
+        }
 
 
-      //identification of bjets
-      for (unsigned int i=0; i<goodjets.size(); i++ ) {
-	Ht += goodjets[i].pT();
-        const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;	
-	if (btagged) jb_final.push_back(goodjets[i]);
-        //if ( j.bTagged() ) { jb_final.push_back(j); }
-	//if  FlavHistory::current_flavour_of(jets[i]);
+        vector<PseudoJet> base_jets = sorted_by_pt(base_jet_def(fj_flav));
+        vector<PseudoJet> flav_pseudojets;
+        if(flavAlg == IFN || flavAlg == CMP) {
+          flav_pseudojets = sorted_by_pt(flav_jet_def(fj_flav));
+        }
+        else if(flavAlg == GHS) {
+          flav_pseudojets = run_GHS(base_jets, GHS_ptcut,
+                                    GHS_beta, GHS_zcut, GHS_Rcut, GHS_alpha, GHS_omega);
+        }
+        else if(flavAlg == SDF) {
+          flav_pseudojets = base_jets;
+          sdFlavCalc(flav_pseudojets);
+        }
+        else if(flavAlg == AKT) {
+          flav_pseudojets = base_jets;
+        }
+
+        const Jets& jets = FastJets::mkJets(flav_pseudojets, jetConstits_flav.particles());
+        //const Jets& jets= jets_unordered.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30);
+
+        // Perform lepton-jet overlap and HT calculation
+
+
+
+
+        for( auto j: jets){
+          if(j.perp()>30 && std::abs(j.eta())<2.4) goodjets.push_back(j);
+        }
+
+
+        //identification of bjets
+        for (unsigned int i=0; i<goodjets.size(); i++ ) {
+          Ht += goodjets[i].pT();
+          const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;
+          if (btagged) jb_final.push_back(goodjets[i]);
+          //if ( j.bTagged() ) { jb_final.push_back(j); }
+          //if  FlavHistory::current_flavour_of(jets[i]);
       }
       }else{
 	const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
@@ -466,7 +498,7 @@ namespace Rivet {
       GHS = 2,
       SDF = 3,
       AKT = 4,
-      TAG = 5, 
+      TAG = 5,
     };
 
     std::string flavAlgName() {
@@ -483,5 +515,39 @@ namespace Rivet {
 
   // The hook for the plugin system
   DECLARE_RIVET_PLUGIN(FlavAlgAnalysis);
+
+
+  bool FinalSPPartons::accept(const Particle& p) const {
+    // Reject if *not* a parton
+    if (!isParton(p))
+      return false;
+    if (p.genParticle()->end_vertex() and p.genParticle()->production_vertex()) {
+      // Accept partons if they end on a standard hadronization vertex
+      if (p.genParticle()->end_vertex()->status() == 5) {
+        auto pv = p.genParticle()->production_vertex();
+        // Accept if some ancenstor starts on SP vertex
+        for(auto pp: p.ancestors(Cuts::OPEN,false)) {
+          if(pp.genParticle() and pp.genParticle()->production_vertex()) {
+            if(pp.genParticle()->production_vertex()->status() == 1) {
+              return _cuts->accept(p);
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+
+  void FinalSPPartons::project(const Event& e) {
+    _theParticles.clear();
+    for (auto gp : HepMCUtils::particles(e.genEvent())) {
+      if (!gp) continue;
+      const Particle p(gp);
+      if (accept(p)) {
+        _theParticles.push_back(p);
+      }
+    }
+  }
 
 }
