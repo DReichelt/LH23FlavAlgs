@@ -75,7 +75,7 @@ namespace Rivet {
 
       double R = 0.5;
 
-      VetoedFinalState jetConstits = VetoedFinalState(FinalSPPartons());
+#ifdef hepmc3
       if( getOption("LEVEL","HADRON") == "HADRON") {
         VetoedFinalState jetConstits = VetoedFinalState(VisibleFinalState(fs));
         jetConstits.addVetoOnThisFinalState(zeeFinder);
@@ -92,6 +92,14 @@ namespace Rivet {
         FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
         declare(akt05Jets, "AntiKt05Jets");
       }
+#else
+        VetoedFinalState jetConstits = VetoedFinalState(VisibleFinalState(fs));
+        jetConstits.addVetoOnThisFinalState(zeeFinder);
+        jetConstits.addVetoOnThisFinalState(zmumuFinder);
+        declare(jetConstits, "jetConstits");
+        FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
+        declare(akt05Jets, "AntiKt05Jets");
+#endif
 
       // we start with a base jet definition (should be either
       // antikt_algorithm or cambridge_algorithm, or their e+e- variants)
@@ -224,7 +232,6 @@ namespace Rivet {
 
       Jets goodjets;
       Jets jb_final;
-      double Ht = 0;
 
 
       if(flavAlg != TAG){
@@ -297,7 +304,6 @@ namespace Rivet {
 
         //identification of bjets
         for (unsigned int i=0; i<goodjets.size(); i++ ) {
-          Ht += goodjets[i].pT();
           const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;
           if (btagged) jb_final.push_back(goodjets[i]);
           //if ( j.bTagged() ) { jb_final.push_back(j); }
@@ -323,7 +329,11 @@ namespace Rivet {
       //   }
       // }
 
-
+      double Ht = 0;
+      for (const Jet& j : goodjets) {
+	Ht += j.pT();
+      }
+      
       //Event weight
       const double w = 0.5;
 
@@ -516,6 +526,7 @@ namespace Rivet {
   // The hook for the plugin system
   DECLARE_RIVET_PLUGIN(FlavAlgAnalysis);
 
+#ifdef hepmc3
 
   bool FinalSPPartons::accept(const Particle& p) const {
     // Reject if *not* a parton
@@ -549,5 +560,5 @@ namespace Rivet {
       }
     }
   }
-
+#endif
 }
