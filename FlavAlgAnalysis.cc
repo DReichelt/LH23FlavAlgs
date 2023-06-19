@@ -1,10 +1,12 @@
 #include "Rivet/Analysis.hh"
 #include "Rivet/Tools/Cuts.hh"
 #include "Rivet/Projections/FinalState.hh"
+#include "Rivet/Projections/HeavyHadrons.hh"
 #include "Rivet/Projections/VetoedFinalState.hh"
 #include "Rivet/Projections/DressedLeptons.hh"
 #include "Rivet/Projections/FastJets.hh"
 #include "Rivet/Projections/ZFinder.hh"
+#include "Rivet/Math/Vector4.hh"
 #include "IFNPlugin/IFNPlugin.hh"
 #include "CMPPlugin/CMPPlugin.hh"
 #include "GHSAlgo/GHSAlgo.hh"
@@ -60,12 +62,16 @@ namespace Rivet {
       else if ( getOption("ALG") == "SDF" ) flavAlg = SDF;
       else if ( getOption("ALG") == "AKT" )  flavAlg = AKT;
       else if ( getOption("ALG") == "TAG" )  flavAlg = TAG;
+      else if ( getOption("ALG") == "CONE" ) flavAlg = CONE;
       else {
         cout<<"unkown flavour algorithm '"<<getOption("ALG")<<"'.";
         exit(1);
       }
 
       FinalState fs; ///< @todo No cuts?
+      
+      HeavyHadrons HHs(Cuts::pT > 5*GeV);
+      declare(HHs, "HeavyHadrons");
 
       ZFinder zeeFinder(fs, Cuts::abseta < 2.4 && Cuts::pT > 20*GeV, PID::ELECTRON, 71.0*GeV, 111.0*GeV, 0.1 );
       declare(zeeFinder, "ZeeFinder");
@@ -75,7 +81,7 @@ namespace Rivet {
 
       double R = 0.5;
 
-#ifdef hepmc3
+      VetoedFinalState jetConstits = VetoedFinalState(FinalSPPartons());
       if( getOption("LEVEL","HADRON") == "HADRON") {
         VetoedFinalState jetConstits = VetoedFinalState(VisibleFinalState(fs));
         jetConstits.addVetoOnThisFinalState(zeeFinder);
@@ -92,14 +98,6 @@ namespace Rivet {
         FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
         declare(akt05Jets, "AntiKt05Jets");
       }
-#else
-        VetoedFinalState jetConstits = VetoedFinalState(VisibleFinalState(fs));
-        jetConstits.addVetoOnThisFinalState(zeeFinder);
-        jetConstits.addVetoOnThisFinalState(zmumuFinder);
-        declare(jetConstits, "jetConstits");
-        FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
-        declare(akt05Jets, "AntiKt05Jets");
-#endif
 
       // we start with a base jet definition (should be either
       // antikt_algorithm or cambridge_algorithm, or their e+e- variants)
@@ -232,9 +230,10 @@ namespace Rivet {
 
       Jets goodjets;
       Jets jb_final;
+      double Ht = 0;
 
 
-      if(flavAlg != TAG){
+      if(flavAlg != TAG && flavAlg != CONE){
 
         // NB. Veto has already been applied on leptons and photons used for dressing
 
@@ -304,21 +303,62 @@ namespace Rivet {
 
         //identification of bjets
         for (unsigned int i=0; i<goodjets.size(); i++ ) {
+          Ht += goodjets[i].pT();
           const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;
           if (btagged) jb_final.push_back(goodjets[i]);
           //if ( j.bTagged() ) { jb_final.push_back(j); }
           //if  FlavHistory::current_flavour_of(jets[i]);
       }
-      }else{
-	const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
-	goodjets = fj.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30*GeV);
+    }else{
 
-	for (const Jet& j : goodjets) {
-	  if ( j.bTagged() ) { jb_final.push_back(j); }
-	}
+      const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
+      goodjets = fj.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30*GeV);
+	
+	
+      //ATLAS STYLE TRUTH TAGGING
+      if(flavAlg == CONE) {
+        
+        const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
+        const Particles& bHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
+        Particles matchedBs;
+
+        cout << "bhadrons size " << bHadrons.size() << endl;
+            
+        for (const Jet& j : goodjets) {
+          Jet closest_j;
+          Particle closest_b;
+          double minDR_j_b = 10;
+
+          for (const Particle& b : bHadrons) {
+            bool alreadyMatched = false;
+            
+            for (const Particle& matchedB : matchedBs) {
+              alreadyMatched = matchedB.isSame(b);
+            }
+            if(alreadyMatched) continue;
+            double DR_j_b = deltaR(j, b);
+          
+            if (DR_j_b < 0.3 && DR_j_b < minDR_j_b) {
+              minDR_j_b = DR_j_b;
+              closest_j = j;
+              closest_b = b;
+            }
+          }
+          if (minDR_j_b < 0.3) {
+            jb_final.push_back(closest_j);
+            matchedBs.push_back(closest_b);
+          }
+        }
+	
+	    }else{ 
+        //CMS STYLE TAGGING
+        for (const Jet& j : goodjets) {
+          if ( j.bTagged() ) { jb_final.push_back(j); }
+        }
 
       }
-      // cout<<flavAlgName()<<" "<<"goodjets: "<<goodjets.size()<<", btagged: "<<jb_final.size()<<"\n";
+      }
+       cout<<flavAlgName()<<" "<<"goodjets: "<<goodjets.size()<<", btagged: "<<jb_final.size()<<"\n";
 
 
       // if(jb_final.size() >0){
@@ -329,11 +369,7 @@ namespace Rivet {
       //   }
       // }
 
-      double Ht = 0;
-      for (const Jet& j : goodjets) {
-	Ht += j.pT();
-      }
-      
+
       //Event weight
       const double w = 0.5;
 
@@ -509,6 +545,7 @@ namespace Rivet {
       SDF = 3,
       AKT = 4,
       TAG = 5,
+      CONE = 6,
     };
 
     std::string flavAlgName() {
@@ -518,6 +555,7 @@ namespace Rivet {
       else if(flavAlg == SDF) return "SDF";
       else if(flavAlg == AKT) return "AKT";
       else if(flavAlg == TAG) return "TAG";
+      else if(flavAlg == CONE) return "CONE";
       else return "unknown";
     }
   };
@@ -526,7 +564,6 @@ namespace Rivet {
   // The hook for the plugin system
   DECLARE_RIVET_PLUGIN(FlavAlgAnalysis);
 
-#ifdef hepmc3
 
   bool FinalSPPartons::accept(const Particle& p) const {
     // Reject if *not* a parton
@@ -560,5 +597,5 @@ namespace Rivet {
       }
     }
   }
-#endif
+
 }
