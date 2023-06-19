@@ -81,23 +81,31 @@ namespace Rivet {
 
       double R = 0.5;
 
-      VetoedFinalState jetConstits = VetoedFinalState(FinalSPPartons());
-      if( getOption("LEVEL","HADRON") == "HADRON") {
+      #ifdef hepmc3
+        if( getOption("LEVEL","HADRON") == "HADRON") {
+          VetoedFinalState jetConstits = VetoedFinalState(VisibleFinalState(fs));
+          jetConstits.addVetoOnThisFinalState(zeeFinder);
+          jetConstits.addVetoOnThisFinalState(zmumuFinder);
+          declare(jetConstits, "jetConstits");
+          FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
+          declare(akt05Jets, "AntiKt05Jets");
+        }
+        else {
+          VetoedFinalState jetConstits = VetoedFinalState(FinalSPPartons());
+          jetConstits.addVetoOnThisFinalState(zeeFinder);
+          jetConstits.addVetoOnThisFinalState(zmumuFinder);
+          declare(jetConstits, "jetConstits");
+          FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
+          declare(akt05Jets, "AntiKt05Jets");
+        }
+      #else
         VetoedFinalState jetConstits = VetoedFinalState(VisibleFinalState(fs));
         jetConstits.addVetoOnThisFinalState(zeeFinder);
         jetConstits.addVetoOnThisFinalState(zmumuFinder);
         declare(jetConstits, "jetConstits");
         FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
         declare(akt05Jets, "AntiKt05Jets");
-      }
-      else {
-        VetoedFinalState jetConstits = VetoedFinalState(FinalSPPartons());
-        jetConstits.addVetoOnThisFinalState(zeeFinder);
-        jetConstits.addVetoOnThisFinalState(zmumuFinder);
-        declare(jetConstits, "jetConstits");
-        FastJets akt05Jets(jetConstits, FastJets::ANTIKT, R);
-        declare(akt05Jets, "AntiKt05Jets");
-      }
+      #endif
 
       // we start with a base jet definition (should be either
       // antikt_algorithm or cambridge_algorithm, or their e+e- variants)
@@ -232,7 +240,6 @@ namespace Rivet {
       Jets jb_final;
       double Ht = 0;
 
-
       if(flavAlg != TAG && flavAlg != CONE){
 
         // NB. Veto has already been applied on leptons and photons used for dressing
@@ -321,8 +328,6 @@ namespace Rivet {
         const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
         const Particles& bHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
         Particles matchedBs;
-
-        cout << "bhadrons size " << bHadrons.size() << endl;
             
         for (const Jet& j : goodjets) {
           Jet closest_j;
@@ -358,7 +363,7 @@ namespace Rivet {
 
       }
       }
-       cout<<flavAlgName()<<" "<<"goodjets: "<<goodjets.size()<<", btagged: "<<jb_final.size()<<"\n";
+       //cout<<flavAlgName()<<" "<<"goodjets: "<<goodjets.size()<<", btagged: "<<jb_final.size()<<"\n";
 
 
       // if(jb_final.size() >0){
@@ -368,6 +373,12 @@ namespace Rivet {
       //     std::cout<<event.allParticles()[i]<<std::endl;
       //   }
       // }
+
+      for (const Jet& j : goodjets) {
+	      Ht += j.pT();
+      }
+
+
 
 
       //Event weight
@@ -564,38 +575,38 @@ namespace Rivet {
   // The hook for the plugin system
   DECLARE_RIVET_PLUGIN(FlavAlgAnalysis);
 
-
-  bool FinalSPPartons::accept(const Particle& p) const {
-    // Reject if *not* a parton
-    if (!isParton(p))
-      return false;
-    if (p.genParticle()->end_vertex() and p.genParticle()->production_vertex()) {
-      // Accept partons if they end on a standard hadronization vertex
-      if (p.genParticle()->end_vertex()->status() == 5) {
-        auto pv = p.genParticle()->production_vertex();
-        // Accept if some ancenstor starts on SP vertex
-        for(auto pp: p.ancestors(Cuts::OPEN,false)) {
-          if(pp.genParticle() and pp.genParticle()->production_vertex()) {
-            if(pp.genParticle()->production_vertex()->status() == 1) {
-              return _cuts->accept(p);
+  #ifdef hepmc3
+    bool FinalSPPartons::accept(const Particle& p) const {
+      // Reject if *not* a parton
+      if (!isParton(p))
+        return false;
+      if (p.genParticle()->end_vertex() and p.genParticle()->production_vertex()) {
+        // Accept partons if they end on a standard hadronization vertex
+        if (p.genParticle()->end_vertex()->status() == 5) {
+          auto pv = p.genParticle()->production_vertex();
+          // Accept if some ancenstor starts on SP vertex
+          for(auto pp: p.ancestors(Cuts::OPEN,false)) {
+            if(pp.genParticle() and pp.genParticle()->production_vertex()) {
+              if(pp.genParticle()->production_vertex()->status() == 1) {
+                return _cuts->accept(p);
+              }
             }
           }
         }
       }
+      return false;
     }
-    return false;
-  }
 
 
-  void FinalSPPartons::project(const Event& e) {
-    _theParticles.clear();
-    for (auto gp : HepMCUtils::particles(e.genEvent())) {
-      if (!gp) continue;
-      const Particle p(gp);
-      if (accept(p)) {
-        _theParticles.push_back(p);
+    void FinalSPPartons::project(const Event& e) {
+      _theParticles.clear();
+      for (auto gp : HepMCUtils::particles(e.genEvent())) {
+        if (!gp) continue;
+        const Particle p(gp);
+        if (accept(p)) {
+          _theParticles.push_back(p);
+        }
       }
     }
-  }
-
+  #endif
 }
