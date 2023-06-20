@@ -62,6 +62,7 @@ namespace Rivet {
       else if ( getOption("ALG") == "SDF" ) flavAlg = SDF;
       else if ( getOption("ALG") == "AKT" )  flavAlg = AKT;
       else if ( getOption("ALG") == "TAG" )  flavAlg = TAG;
+      else if ( getOption("ALG") == "OTAG" )  flavAlg = OTAG;
       else if ( getOption("ALG") == "CONE" ) flavAlg = CONE;
       else {
         cout<<"unkown flavour algorithm '"<<getOption("ALG")<<"'.";
@@ -240,7 +241,7 @@ namespace Rivet {
       Jets jb_final;
       double Ht = 0;
 
-      if(flavAlg != TAG && flavAlg != CONE){
+      if(flavAlg != TAG && flavAlg != OTAG && flavAlg != CONE){
 
         // NB. Veto has already been applied on leptons and photons used for dressing
 
@@ -318,50 +319,58 @@ namespace Rivet {
       }
     }else{
 
-      const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
-      goodjets = fj.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30*GeV);
+	const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
+	goodjets = fj.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30*GeV);
 	
 	
-      //ATLAS STYLE TRUTH TAGGING
-      if(flavAlg == CONE) {
+	//ATLAS STYLE TRUTH TAGGING
+	if(flavAlg == CONE) {
         
-        const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
-        const Particles& bHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
-        Particles matchedBs;
+	  const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
+	  const Particles& bHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
+	  Particles matchedBs;
             
-        for (const Jet& j : goodjets) {
-          Jet closest_j;
-          Particle closest_b;
-          double minDR_j_b = 10;
+	  for (const Jet& j : goodjets) {
+	    Jet closest_j;
+	    Particle closest_b;
+	    double minDR_j_b = 10;
 
-          for (const Particle& b : bHadrons) {
-            bool alreadyMatched = false;
+	    for (const Particle& b : bHadrons) {
+	      bool alreadyMatched = false;
             
-            for (const Particle& matchedB : matchedBs) {
-              alreadyMatched = matchedB.isSame(b);
-            }
-            if(alreadyMatched) continue;
-            double DR_j_b = deltaR(j, b);
+	      for (const Particle& matchedB : matchedBs) {
+		alreadyMatched = matchedB.isSame(b);
+	      }
+	      if(alreadyMatched) continue;
+	      double DR_j_b = deltaR(j, b);
           
-            if (DR_j_b < 0.3 && DR_j_b < minDR_j_b) {
-              minDR_j_b = DR_j_b;
-              closest_j = j;
-              closest_b = b;
-            }
-          }
-          if (minDR_j_b < 0.3) {
-            jb_final.push_back(closest_j);
-            matchedBs.push_back(closest_b);
-          }
-        }
+	      if (DR_j_b < 0.3 && DR_j_b < minDR_j_b) {
+		minDR_j_b = DR_j_b;
+		closest_j = j;
+		closest_b = b;
+	      }
+	    }
+	    if (minDR_j_b < 0.3) {
+	      jb_final.push_back(closest_j);
+	      matchedBs.push_back(closest_b);
+	    }
+	  }
 	
-	    }else{ 
-        //CMS STYLE TAGGING
-        for (const Jet& j : goodjets) {
-          if ( j.bTagged() ) { jb_final.push_back(j); }
-        }
-
-      }
+	}else if(flavAlg==TAG){ 
+	  //CMS STYLE TAGGING
+	  for (const Jet& j : goodjets) {
+	    if ( j.bTagged() ) { jb_final.push_back(j); }
+	  }
+	}else if(flavAlg==OTAG){ 
+	  //CMS STYLE TAGGING, but requiring an odd number of btags
+	  for (const Jet& j : goodjets) {
+	    if( j.bTagged()){
+	      const int btags = j.bTags().size();
+	      if(btags%2 ==1)  jb_final.push_back(j);
+	    }
+	  }
+	}
+	
       }
        //cout<<flavAlgName()<<" "<<"goodjets: "<<goodjets.size()<<", btagged: "<<jb_final.size()<<"\n";
 
@@ -556,7 +565,8 @@ namespace Rivet {
       SDF = 3,
       AKT = 4,
       TAG = 5,
-      CONE = 6,
+      OTAG = 6,
+      CONE = 7,
     };
 
     std::string flavAlgName() {
@@ -566,6 +576,7 @@ namespace Rivet {
       else if(flavAlg == SDF) return "SDF";
       else if(flavAlg == AKT) return "AKT";
       else if(flavAlg == TAG) return "TAG";
+      else if(flavAlg == OTAG) return "OTAG";
       else if(flavAlg == CONE) return "CONE";
       else return "unknown";
     }
