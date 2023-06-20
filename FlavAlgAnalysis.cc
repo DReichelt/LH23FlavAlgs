@@ -239,7 +239,6 @@ namespace Rivet {
 
       Jets goodjets;
       Jets jb_final;
-      double Ht = 0;
 
       if(flavAlg != TAG && flavAlg != OTAG && flavAlg != CONE){
 
@@ -311,7 +310,6 @@ namespace Rivet {
 
         //identification of bjets
         for (unsigned int i=0; i<goodjets.size(); i++ ) {
-          Ht += goodjets[i].pT();
           const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;
           if (btagged) jb_final.push_back(goodjets[i]);
           //if ( j.bTagged() ) { jb_final.push_back(j); }
@@ -382,6 +380,7 @@ namespace Rivet {
       //     std::cout<<event.allParticles()[i]<<std::endl;
       //   }
       // }
+      double Ht = 0;
 
       for (const Jet& j : goodjets) {
 	      Ht += j.pT();
