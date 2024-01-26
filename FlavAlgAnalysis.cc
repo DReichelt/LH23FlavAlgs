@@ -17,6 +17,62 @@
 using namespace fastjet;
 using namespace fastjet::contrib;
 
+/// \class Angularity
+/// definition of angularity
+///
+class Angularity :
+//public FunctionOfPseudoJet<double>,
+public PseudoJet{
+public:
+  /// ctor
+  Angularity(double alpha, double jet_radius, double kappa=1.0, Selector constitCut=SelectorPtMin(0.)) : _alpha(alpha), _radius(jet_radius), _kappa(kappa), _constitCut(constitCut) {}
+
+  Angularity() = default;
+  /// description
+  std::string description() const{
+    std::ostringstream oss;
+    oss << "Angularity with alpha=" << _alpha;
+    return oss.str();
+  }
+
+  /// computation of the angularity itself
+  //double result(const PseudoJet &jet) const{
+  double operator()(const PseudoJet &jet) const{
+    // get the jet constituents
+    std::vector<PseudoJet> constits = jet.constituents();
+
+    // get the reference axis
+    PseudoJet reference_axis = _get_reference_axis(jet);
+
+    // do the actual coputation
+    double numerator = 0.0, denominator = 0.0;
+    unsigned int num = 0;
+    for (const auto &c : constits){
+      if (!_constitCut.pass(c)) continue;
+      double pt = c.pt();
+      // Note: better compute (dist^2)^(alpha/2) to avoid an extra square root
+      numerator   += pow(pt, _kappa) * pow(c.squared_distance(reference_axis), 0.5*_alpha);
+      denominator += pt;
+      num += 1;
+    }
+    if (denominator == 0) return -1;
+    // the formula is only correct for the the typical angularities which satisfy either kappa==1 or alpha==0.
+    else return numerator/(pow(denominator, _kappa)*pow(_radius, _alpha));
+  }
+
+protected:
+  PseudoJet _get_reference_axis(const PseudoJet &jet) const{
+    if (_alpha>1) return jet;
+
+    fastjet::Recluster recluster(JetDefinition(antikt_algorithm, JetDefinition::max_allowable_R, WTA_pt_scheme));
+    return recluster(jet);
+  }
+
+  double _alpha, _radius, _kappa;
+  Selector _constitCut;
+};
+
+
 namespace Rivet {
 
 
@@ -69,8 +125,18 @@ namespace Rivet {
         exit(1);
       }
 
+      if ( getOption("ALG2") == "IFN" ) flavAlg2 = IFN;
+      else if ( getOption("ALG2") == "CMP" ) flavAlg2 = CMP;
+      else if ( getOption("ALG2") == "GHS" ) flavAlg2 = GHS;
+      else if ( getOption("ALG2") == "SDF" ) flavAlg2 = SDF;
+      else if ( getOption("ALG2") == "AKT" )  flavAlg2 = AKT;
+      else if ( getOption("ALG2") == "TAG" )  flavAlg2 = TAG;
+      else if ( getOption("ALG2") == "OTAG" )  flavAlg2 = OTAG;
+      else if ( getOption("ALG2") == "CONE" ) flavAlg2 = CONE;
+      else                                    flavAlg2 = NONE;
+
       FinalState fs; ///< @todo No cuts?
-      
+
       HeavyHadrons HHs(Cuts::pT > 5*GeV);
       declare(HHs, "HeavyHadrons");
 
@@ -162,6 +228,54 @@ namespace Rivet {
         flav_jet_def = base_jet_def;
       }
 
+      if(flavAlg2 == IFN) {
+        // And then we set up the IFN_Plugin that builds on the base_jet_def
+        // The main free parameter, alpha, in the uij distance,
+        //   uij = max(pt_i, pt_j)^alpha min(pt_i, pt_j)^(2-alpha) Omega_ij
+        double alpha = 2.0;
+        // The parameter that sets the nature of the Omega rapidity term;
+        // only change the default of 3-alpha if you are sure you know what you are doing
+        double omega = 3.0 - alpha;
+        // The flavour summation scheme; should be one of
+        //   - FlavRecombiner::net
+        //   - FlavRecombiner::modulo_2
+        FlavRecombiner::FlavSummation flav_summation = FlavRecombiner::net;
+        // then construct the IFNPlugin jet definition
+        flav_jet_def2= JetDefinition(new IFNPlugin(base_jet_def, alpha, omega, flav_summation));
+        flav_jet_def2.delete_plugin_when_unused();
+      }
+      else if(flavAlg2 == CMP) {
+        // CMP parameters:
+        // CMP 'a' parameter in
+        //   kappa_ij = 1/a * (kT_i^2 + kT_j^2) / (2*kT_max^2)
+        double CMP_a = 0.1;
+        // correction to original CMP alg2o: do not change this if you want IRC safety!
+        CMPPlugin::CorrectionType CMP_corr = CMPPlugin::CorrectionType::OverAllCoshyCosPhi_a2;
+        // Dynamic definition of ktmax
+        CMPPlugin::ClusteringType CMP_clust = CMPPlugin::ClusteringType::DynamicKtMax;
+        // CMP plugin
+        flav_jet_def2 = JetDefinition(new CMPPlugin(R, CMP_a, CMP_corr, CMP_clust));
+        // enable it to track flavours (default is net flavour)
+        flav_jet_def2.set_recombiner(&flav_recombiner);
+        flav_jet_def2.delete_plugin_when_unused();
+      }
+      else if(flavAlg2 == GHS) {
+        GHS_alpha = 1.0; // < flav-kt distance parameter alpha
+        GHS_beta  = 1.0; // < SoftDrop parameter beta for flavour clusters
+        GHS_zcut  = 0.1; // < SoftDrop zcut for flavour clusters
+        GHS_Rcut  = 0.1; // < Rcut parameter
+        GHS_omega = 0.0; // < omega parameter for GHS_Omega (omega = 0 uses DeltaR_ij^2)
+        GHS_ptcut = 15.0; // < overall ptcut
+      }
+      else if(flavAlg2 == SDF) {
+        double zcut = 0.1;
+        double beta = 1;
+        sdFlavCalc2 = SDFlavourCalc(beta,zcut,R);
+      }
+      else if(flavAlg2 == AKT) {
+        flav_jet_def2 = base_jet_def;
+      }
+
 
       //Histograms booking
 
@@ -195,7 +309,20 @@ namespace Rivet {
 
       book(_h_bjet_multiplicity ,20,1,1);
 
+      book(_h_compare,"compare_algs",6,-0.5,5.5);
 
+      book( _h_ang05, "ang05",  20, 0, 1);
+      book( _h_ang10, "ang10",  20, 0, 1);
+      book( _h_ang20, "ang20",  20, 0, 1);
+      book( _h_mass, "mass",  20, 0, 1);
+      book( _h_ang05_b, "ang05_b",  20, 0, 1);
+      book( _h_ang10_b, "ang10_b",  20, 0, 1);
+      book( _h_ang20_b, "ang20_b",  20, 0, 1);
+      book( _h_mass_b, "mass_b",  20, 0, 1);
+
+      ang05 = Angularity(0.05, R);
+      ang10 = Angularity(0.1, R);
+      ang20 = Angularity(0.2, R);
 
       if(debug){
 	std::cout<<"Jet descr \n";
@@ -204,7 +331,6 @@ namespace Rivet {
       }
 
     }
-
 
     /// Perform the per-event analysis
     void analyze(const Event& event) {
@@ -239,6 +365,12 @@ namespace Rivet {
 
       Jets goodjets;
       Jets jb_final;
+      Jets goodjets2;
+      Jets jb_final2;
+      bool alg1_lead_is_btagged;
+      bool alg2_lead_is_btagged;
+      int alg1_first_btagged = -1;
+      int alg2_first_btagged = -1;
 
       if(flavAlg != TAG && flavAlg != OTAG && flavAlg != CONE){
 
@@ -295,6 +427,7 @@ namespace Rivet {
           flav_pseudojets = base_jets;
         }
 
+
         const Jets& jets = FastJets::mkJets(flav_pseudojets, jetConstits_flav.particles());
         //const Jets& jets= jets_unordered.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30);
 
@@ -311,7 +444,11 @@ namespace Rivet {
         //identification of bjets
         for (unsigned int i=0; i<goodjets.size(); i++ ) {
           const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;
-          if (btagged) jb_final.push_back(goodjets[i]);
+          if (btagged) {
+            jb_final.push_back(goodjets[i]);
+            if(alg1_first_btagged < 0) alg1_first_btagged = i;
+          }
+          if(i==0) alg1_lead_is_btagged = btagged;
           //if ( j.bTagged() ) { jb_final.push_back(j); }
           //if  FlavHistory::current_flavour_of(jets[i]);
       }
@@ -319,15 +456,15 @@ namespace Rivet {
 
 	const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
 	goodjets = fj.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30*GeV);
-	
-	
+
+
 	//ATLAS STYLE TRUTH TAGGING
 	if(flavAlg == CONE) {
-        
+
 	  const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
 	  const Particles& bHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
 	  Particles matchedBs;
-            
+
 	  for (const Jet& j : goodjets) {
 	    Jet closest_j;
 	    Particle closest_b;
@@ -335,13 +472,13 @@ namespace Rivet {
 
 	    for (const Particle& b : bHadrons) {
 	      bool alreadyMatched = false;
-            
+
 	      for (const Particle& matchedB : matchedBs) {
 		alreadyMatched = matchedB.isSame(b);
 	      }
 	      if(alreadyMatched) continue;
 	      double DR_j_b = deltaR(j, b);
-          
+
 	      if (DR_j_b < 0.3 && DR_j_b < minDR_j_b) {
 		minDR_j_b = DR_j_b;
 		closest_j = j;
@@ -353,13 +490,13 @@ namespace Rivet {
 	      matchedBs.push_back(closest_b);
 	    }
 	  }
-	
-	}else if(flavAlg==TAG){ 
+
+	}else if(flavAlg==TAG){
 	  //CMS STYLE TAGGING
 	  for (const Jet& j : goodjets) {
 	    if ( j.bTagged() ) { jb_final.push_back(j); }
 	  }
-	}else if(flavAlg==OTAG){ 
+	}else if(flavAlg==OTAG){
 	  //CMS STYLE TAGGING, but requiring an odd number of btags
 	  for (const Jet& j : goodjets) {
 	    if( j.bTagged()){
@@ -368,9 +505,105 @@ namespace Rivet {
 	    }
 	  }
 	}
-	
+
       }
-       //cout<<flavAlgName()<<" "<<"goodjets: "<<goodjets.size()<<", btagged: "<<jb_final.size()<<"\n";
+      if(flavAlg2 != NONE && flavAlg2 != TAG && flavAlg2 != OTAG && flavAlg2 != CONE){
+
+        // NB. Veto has already been applied on leptons and photons used for dressing
+
+        const FinalState& jetConstits_flav= applyProjection<FinalState>(event, "jetConstits");
+
+        if(debug){
+          std::cout<<"~~~~~~~~~~~~~Projection \n";
+          for (unsigned int i=0; i< jetConstits_flav.particles().size(); i++){
+            std::cout<< jetConstits_flav.particles()[i]<<std::endl;
+          }
+        }
+
+
+
+        PseudoJets fj_flav = FastJets::mkClusterInputs(jetConstits_flav.particles());
+        for (unsigned int i=0; i<  fj_flav.size(); i++){
+          //	std::cout<<fj_flav[i].description()<<"\n";
+          const int pdgid = jetConstits_flav.particles()[i].pid();
+          fj_flav[i].set_user_info(new  fastjet::contrib::FlavHistory(pdgid));
+        }
+
+
+        if(debug){
+          std::cout<<"Convert FS into pseudojets \n";
+          std::cout<<"~~~~~~~~~ FS \n";
+
+          for (unsigned int i=0; i<  fj_flav.size(); i++){
+            //	std::cout<<fj_flav[i].description()<<"\n";
+            std::cout<<"pseudo jet rap="<<fj_flav[i].rap()<<" pT="<<fj_flav[i].perp() <<" flav= "<< FlavHistory::current_flavour_of(fj_flav[i]).description()<<"\n";
+          }
+
+          std::cout<<"user info flav done \n";
+          std::cout<<"jet def descr = \n"<< flav_jet_def.description()<<"\n";
+          std::cout<<"jet def descr = \n"<< base_jet_def.description()<<"\n";
+        }
+
+
+        vector<PseudoJet> base_jets = sorted_by_pt(base_jet_def(fj_flav));
+        vector<PseudoJet> flav_pseudojets;
+        if(flavAlg2 == IFN || flavAlg2 == CMP) {
+          flav_pseudojets = sorted_by_pt(flav_jet_def(fj_flav));
+        }
+        else if(flavAlg2 == GHS) {
+          flav_pseudojets = run_GHS(base_jets, GHS_ptcut,
+                                    GHS_beta, GHS_zcut, GHS_Rcut, GHS_alpha, GHS_omega);
+        }
+        else if(flavAlg2 == SDF) {
+          flav_pseudojets = base_jets;
+          sdFlavCalc(flav_pseudojets);
+        }
+        else if(flavAlg2 == AKT) {
+          flav_pseudojets = base_jets;
+        }
+
+        const Jets& jets = FastJets::mkJets(flav_pseudojets, jetConstits_flav.particles());
+        //const Jets& jets= jets_unordered.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30);
+
+        // Perform lepton-jet overlap and HT calculation
+
+
+
+
+        for( auto j: jets){
+          if(j.perp()>30 && std::abs(j.eta())<2.4) goodjets2.push_back(j);
+        }
+
+
+        //identification of bjets
+        for (unsigned int i=0; i<goodjets2.size(); i++ ) {
+          const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets2[i])[5]%2) ==1 ;
+          if (btagged) {
+            jb_final2.push_back(goodjets2[i]);
+            if(alg2_first_btagged < 0) alg2_first_btagged = i;
+          }
+          if(i==0) alg2_lead_is_btagged = btagged;
+          //if ( j.bTagged() ) { jb_final2.push_back(j); }
+          //if  FlavHistory::current_flavour_of(jets[i]);
+        }
+      } /// at this point we have the flav alg to compare too
+
+      if(goodjets.size() != 0 && goodjets2.size() != 0) {
+        if(alg1_lead_is_btagged && alg2_lead_is_btagged) _h_compare->fill(LEAD_TAGGED_BOTH); // { cout<<"lead is btagged in alg1 and alg2.\n"; }
+        else if(alg1_lead_is_btagged)                    _h_compare->fill(LEAD_TAGGED_ALG1); //{ cout<<"lead is btagged in alg1 only.\n"; exit(1); }
+        else if(alg2_lead_is_btagged)                    _h_compare->fill(LEAD_TAGGED_ALG2); //{ cout<<"lead is btagged in alg2 only.\n"; exit(1); }
+        else                                             {
+          // cout<<"lead is NOT btagged in either alg1 ("<<alg1_first_btagged<<") or alg2 ("<<alg2_first_btagged<<").\n";
+          if(alg1_first_btagged < 0 && alg2_first_btagged < 0) _h_compare->fill(NO_TAG_BOTH);
+          else if(alg1_first_btagged == alg2_first_btagged)    _h_compare->fill(SUBLEAD_TAG_AGREE);
+          else                                                 _h_compare->fill(SUBLEAD_TAG_DISAGREE);
+        }
+      }
+      // else {
+      //   cout<<"no good jets\n";
+      // }
+
+      //cout<<flavAlgName()<<" "<<"goodjets: "<<goodjets.size()<<", btagged: "<<jb_final.size()<<"\n";
 
 
       // if(jb_final.size() >0){
@@ -406,6 +639,11 @@ namespace Rivet {
         if ( ee_event ) _h_Dphi_Zj->fill(deltaPhi(zees[0], j1),w);
         if ( mm_event ) _h_Dphi_Zj->fill(deltaPhi(zmumus[0], j1),w);
 
+        _h_ang05->fill(ang05(goodjets[0].pseudojet()),w);
+        _h_ang10->fill(ang10(goodjets[0].pseudojet()),w);
+        _h_ang20->fill(ang20(goodjets[0].pseudojet()),w);
+        _h_mass->fill(j1.mass()/j1.pt(),w);
+
         if ( jb_final.size() > 0 ) {
 
           FourMomentum b1(jb_final[0].momentum());
@@ -419,6 +657,11 @@ namespace Rivet {
           _h_HT_b->fill(Ht,w);
           if ( ee_event ) _h_Dphi_Zb_b->fill(deltaPhi(zees[0], b1.phi()),w);
           if ( mm_event ) _h_Dphi_Zb_b->fill(deltaPhi(zmumus[0], b1.phi()),w);
+
+          _h_ang05_b->fill(ang05(jb_final[0].pseudojet()),w);
+          _h_ang10_b->fill(ang10(jb_final[0].pseudojet()),w);
+          _h_ang20_b->fill(ang20(jb_final[0].pseudojet()),w);
+          _h_mass->fill(b1.mass()/b1.pt(),w);
 
           if ( jb_final.size() > 1 ) {
 
@@ -513,6 +756,15 @@ namespace Rivet {
 
       scale( _h_bjet_multiplicity, norm );
 
+      normalize(_h_compare);
+      normalize(_h_ang05);
+      normalize(_h_ang10);
+      normalize(_h_ang20);
+      normalize(_h_mass);
+      normalize(_h_ang05_b);
+      normalize(_h_ang10_b);
+      normalize(_h_ang20_b);
+      normalize(_h_mass);
     }
 
 
@@ -539,9 +791,23 @@ namespace Rivet {
 
     Histo1DPtr     _h_bjet_multiplicity;
 
+    Histo1DPtr     _h_ang05, _h_ang10, _h_ang20, _h_mass;
+    Histo1DPtr     _h_ang05_b, _h_ang10_b, _h_ang20_b, _h_mass_b;
+    Angularity     ang05, ang10, ang20;
+
+    enum {
+      LEAD_TAGGED_BOTH = 0,
+      LEAD_TAGGED_ALG1 = 1,
+      LEAD_TAGGED_ALG2 = 2,
+      SUBLEAD_TAG_AGREE = 3,
+      SUBLEAD_TAG_DISAGREE = 4,
+      NO_TAG_BOTH = 5,
+    };
+    Histo1DPtr     _h_compare;
 
     JetDefinition base_jet_def;
     JetDefinition flav_jet_def;
+    JetDefinition flav_jet_def2;
     FlavRecombiner flav_recombiner;
 
     bool debug = false;
@@ -555,8 +821,10 @@ namespace Rivet {
     double GHS_ptcut; // < overall ptcut
 
     SDFlavourCalc sdFlavCalc;
+    SDFlavourCalc sdFlavCalc2;
 
     int flavAlg;
+    int flavAlg2;
     enum {
       IFN = 0,
       CMP = 1,
@@ -566,6 +834,7 @@ namespace Rivet {
       TAG = 5,
       OTAG = 6,
       CONE = 7,
+      NONE = 8
     };
 
     std::string flavAlgName() {
