@@ -7,10 +7,10 @@
 #include "Rivet/Projections/FastJets.hh"
 #include "Rivet/Projections/ZFinder.hh"
 #include "Rivet/Math/Vector4.hh"
-#include "IFNPlugin/IFNPlugin.hh"
-#include "CMPPlugin/CMPPlugin.hh"
-#include "GHSAlgo/GHSAlgo.hh"
-#include "SDFlavPlugin/SDFlavPlugin.hh"
+#include "fastjet/contrib/IFNPlugin.hh"
+#include "fastjet/contrib/CMPPlugin.hh"
+#include "fastjet/contrib/GHSAlgo.hh"
+#include "fastjet/contrib/SDFlavPlugin.hh"
 
 //#define DebugLog
 
@@ -112,28 +112,32 @@ namespace Rivet {
       getLog().setLevel(0);
 #endif
 
-      if ( getOption("ALG") == "IFN" ) flavAlg = IFN;
-      else if ( getOption("ALG") == "CMP" ) flavAlg = CMP;
-      else if ( getOption("ALG") == "GHS" ) flavAlg = GHS;
-      else if ( getOption("ALG") == "SDF" ) flavAlg = SDF;
+      if ( getOption("ALG") == "IFN" )       flavAlg = IFN;
+      else if ( getOption("ALG") == "CMP" )  flavAlg = CMP;
+      else if ( getOption("ALG") == "GHS" )  flavAlg = GHS;
+      else if ( getOption("ALG") == "SDF" )  flavAlg = SDF;
       else if ( getOption("ALG") == "AKT" )  flavAlg = AKT;
       else if ( getOption("ALG") == "TAG" )  flavAlg = TAG;
-      else if ( getOption("ALG") == "OTAG" )  flavAlg = OTAG;
+      else if ( getOption("ALG") == "OTAG" ) flavAlg = OTAG;
       else if ( getOption("ALG") == "CONE" ) flavAlg = CONE;
       else {
         cout<<"unkown flavour algorithm '"<<getOption("ALG")<<"'.";
         exit(1);
       }
 
-      if ( getOption("ALG2") == "IFN" ) flavAlg2 = IFN;
-      else if ( getOption("ALG2") == "CMP" ) flavAlg2 = CMP;
-      else if ( getOption("ALG2") == "GHS" ) flavAlg2 = GHS;
-      else if ( getOption("ALG2") == "SDF" ) flavAlg2 = SDF;
+      if ( getOption("ALG2") == "IFN" )       flavAlg2 = IFN;
+      else if ( getOption("ALG2") == "CMP" )  flavAlg2 = CMP;
+      else if ( getOption("ALG2") == "GHS" )  flavAlg2 = GHS;
+      else if ( getOption("ALG2") == "SDF" )  flavAlg2 = SDF;
       else if ( getOption("ALG2") == "AKT" )  flavAlg2 = AKT;
       else if ( getOption("ALG2") == "TAG" )  flavAlg2 = TAG;
-      else if ( getOption("ALG2") == "OTAG" )  flavAlg2 = OTAG;
+      else if ( getOption("ALG2") == "OTAG" ) flavAlg2 = OTAG;
       else if ( getOption("ALG2") == "CONE" ) flavAlg2 = CONE;
       else                                    flavAlg2 = NONE;
+
+      if ( getOption("TAGPID") == "4" ) tagPID = 4;
+      else if ( getOption("TAGPID") == "5" ) tagPID = 5;
+      else tagPID = 5; // b-jet tagging is the default
 
       FinalState fs; ///< @todo No cuts?
 
@@ -149,6 +153,7 @@ namespace Rivet {
       double R = 0.5;
 
       #ifdef hepmc3
+        cout << " THAT WORKED " << endl;
         if( getOption("LEVEL","HADRON") == "HADRON") {
           VetoedFinalState jetConstits = VetoedFinalState(VisibleFinalState(fs));
           jetConstits.addVetoOnThisFinalState(zeeFinder);
@@ -180,7 +185,7 @@ namespace Rivet {
       // enable it to track flavours (default is net flavour)
       base_jet_def.set_recombiner(&flav_recombiner);
 
-      if(flavAlg == IFN) {
+      if ( flavAlg == IFN ) {
         // And then we set up the IFN_Plugin that builds on the base_jet_def
         // The main free parameter, alpha, in the uij distance,
         //   uij = max(pt_i, pt_j)^alpha min(pt_i, pt_j)^(2-alpha) Omega_ij
@@ -193,10 +198,10 @@ namespace Rivet {
         //   - FlavRecombiner::modulo_2
         FlavRecombiner::FlavSummation flav_summation = FlavRecombiner::net;
         // then construct the IFNPlugin jet definition
-        flav_jet_def= JetDefinition(new IFNPlugin(base_jet_def, alpha, omega, flav_summation));
+        flav_jet_def = JetDefinition(new IFNPlugin(base_jet_def, alpha, omega, flav_summation));
         flav_jet_def.delete_plugin_when_unused();
       }
-      else if(flavAlg == CMP) {
+      else if ( flavAlg == CMP ) {
         // CMP parameters:
         // CMP 'a' parameter in
         //   kappa_ij = 1/a * (kT_i^2 + kT_j^2) / (2*kT_max^2)
@@ -211,24 +216,21 @@ namespace Rivet {
         flav_jet_def.set_recombiner(&flav_recombiner);
         flav_jet_def.delete_plugin_when_unused();
       }
-      else if(flavAlg == GHS) {
+      else if ( flavAlg == GHS ) {
         GHS_alpha = 1.0; // < flav-kt distance parameter alpha
-        GHS_beta  = 1.0; // < SoftDrop parameter beta for flavour clusters
-        GHS_zcut  = 0.1; // < SoftDrop zcut for flavour clusters
-        GHS_Rcut  = 0.1; // < Rcut parameter
-        GHS_omega = 0.0; // < omega parameter for GHS_Omega (omega = 0 uses DeltaR_ij^2)
+        GHS_omega = 2.0; // < omega parameter for GHS_Omega (omega = 0 uses DeltaR_ij^2)
         GHS_ptcut = 15.0; // < overall ptcut
       }
-      else if(flavAlg == SDF) {
+      else if ( flavAlg == SDF ) {
         double zcut = 0.1;
         double beta = 1;
         sdFlavCalc = SDFlavourCalc(beta,zcut,R);
       }
-      else if(flavAlg == AKT) {
+      else if ( flavAlg == AKT ) {
         flav_jet_def = base_jet_def;
       }
 
-      if(flavAlg2 == IFN) {
+      if ( flavAlg2 == IFN ) {
         // And then we set up the IFN_Plugin that builds on the base_jet_def
         // The main free parameter, alpha, in the uij distance,
         //   uij = max(pt_i, pt_j)^alpha min(pt_i, pt_j)^(2-alpha) Omega_ij
@@ -244,7 +246,7 @@ namespace Rivet {
         flav_jet_def2= JetDefinition(new IFNPlugin(base_jet_def, alpha, omega, flav_summation));
         flav_jet_def2.delete_plugin_when_unused();
       }
-      else if(flavAlg2 == CMP) {
+      else if ( flavAlg2 == CMP ) {
         // CMP parameters:
         // CMP 'a' parameter in
         //   kappa_ij = 1/a * (kT_i^2 + kT_j^2) / (2*kT_max^2)
@@ -259,23 +261,19 @@ namespace Rivet {
         flav_jet_def2.set_recombiner(&flav_recombiner);
         flav_jet_def2.delete_plugin_when_unused();
       }
-      else if(flavAlg2 == GHS) {
+      else if ( flavAlg2 == GHS ) {
         GHS_alpha = 1.0; // < flav-kt distance parameter alpha
-        GHS_beta  = 1.0; // < SoftDrop parameter beta for flavour clusters
-        GHS_zcut  = 0.1; // < SoftDrop zcut for flavour clusters
-        GHS_Rcut  = 0.1; // < Rcut parameter
-        GHS_omega = 0.0; // < omega parameter for GHS_Omega (omega = 0 uses DeltaR_ij^2)
+        GHS_omega = 2.0; // < omega parameter for GHS_Omega (omega = 0 uses DeltaR_ij^2)
         GHS_ptcut = 15.0; // < overall ptcut
       }
-      else if(flavAlg2 == SDF) {
+      else if ( flavAlg2 == SDF ) {
         double zcut = 0.1;
         double beta = 1;
         sdFlavCalc2 = SDFlavourCalc(beta,zcut,R);
       }
-      else if(flavAlg2 == AKT) {
+      else if ( flavAlg2 == AKT ) {
         flav_jet_def2 = base_jet_def;
       }
-
 
       //Histograms booking
 
@@ -324,10 +322,10 @@ namespace Rivet {
       ang10 = Angularity(0.1, R);
       ang20 = Angularity(0.2, R);
 
-      if(debug){
-	std::cout<<"Jet descr \n";
-	std::cout<<"jet def descr = \n"<< flav_jet_def.description()<<"\n";
-	std::cout<<"jet def descr = \n"<< base_jet_def.description()<<"\n";
+      if (debug) {
+        std::cout << "Jet descr \n";
+        std::cout << "jet def descr = \n" << flav_jet_def.description() << "\n";
+        std::cout << "jet def descr = \n" << base_jet_def.description() << "\n";
       }
 
     }
@@ -355,52 +353,48 @@ namespace Rivet {
       if (zmumus.size() == 1) { mm_event = true; }
       const Particles& theLeptons = zees.size() ? zeeFS.constituents() : zmumuFS.constituents();
 
-      if(debug){
-	std::cout<<"~~~~~~~~~~~~Event in rivet \n";
-	for (unsigned int i=0; i<event.allParticles().size(); i++){
-	  std::cout<<event.allParticles()[i]<<std::endl;
-	}
+      if (debug) {
+        std::cout<<"~~~~~~~~~~~~Event in rivet \n";
+        for (unsigned int i=0; i<event.allParticles().size(); i++) {
+          std::cout<<event.allParticles()[i]<<std::endl;
+        }
       }
-
 
       Jets goodjets;
       Jets jb_final;
       Jets goodjets2;
       Jets jb_final2;
-      bool alg1_lead_is_btagged;
-      bool alg2_lead_is_btagged;
+      bool alg1_lead_is_btagged = false;
+      bool alg2_lead_is_btagged = false;
       int alg1_first_btagged = -1;
       int alg2_first_btagged = -1;
 
-      if(flavAlg != TAG && flavAlg != OTAG && flavAlg != CONE){
+      if (flavAlg != TAG && flavAlg != OTAG && flavAlg != CONE) { // Flavoured jet algorithms
 
         // NB. Veto has already been applied on leptons and photons used for dressing
 
         const FinalState& jetConstits_flav= applyProjection<FinalState>(event, "jetConstits");
 
-        if(debug){
+        if (debug) {
           std::cout<<"~~~~~~~~~~~~~Projection \n";
-          for (unsigned int i=0; i< jetConstits_flav.particles().size(); i++){
-            std::cout<< jetConstits_flav.particles()[i]<<std::endl;
+          for (unsigned int i=0; i< jetConstits_flav.particles().size(); i++) {
+            std::cout << jetConstits_flav.particles()[i] << std::endl;
           }
         }
 
-
-
         PseudoJets fj_flav = FastJets::mkClusterInputs(jetConstits_flav.particles());
-        for (unsigned int i=0; i<  fj_flav.size(); i++){
-          //	std::cout<<fj_flav[i].description()<<"\n";
+        for (unsigned int i=0; i<  fj_flav.size(); i++) {
+          if (debug) std::cout<<fj_flav[i].description()<<"\n";
           const int pdgid = jetConstits_flav.particles()[i].pid();
           fj_flav[i].set_user_info(new  fastjet::contrib::FlavHistory(pdgid));
         }
 
-
-        if(debug){
+        if (debug) {
           std::cout<<"Convert FS into pseudojets \n";
           std::cout<<"~~~~~~~~~ FS \n";
 
-          for (unsigned int i=0; i<  fj_flav.size(); i++){
-            //	std::cout<<fj_flav[i].description()<<"\n";
+          for (unsigned int i=0; i<  fj_flav.size(); i++) {
+            std::cout<<fj_flav[i].description()<<"\n";
             std::cout<<"pseudo jet rap="<<fj_flav[i].rap()<<" pT="<<fj_flav[i].perp() <<" flav= "<< FlavHistory::current_flavour_of(fj_flav[i]).description()<<"\n";
           }
 
@@ -409,166 +403,133 @@ namespace Rivet {
           std::cout<<"jet def descr = \n"<< base_jet_def.description()<<"\n";
         }
 
-
         vector<PseudoJet> base_jets = sorted_by_pt(base_jet_def(fj_flav));
         vector<PseudoJet> flav_pseudojets;
-        if(flavAlg == IFN || flavAlg == CMP) {
+        if (flavAlg == IFN || flavAlg == CMP) {
           flav_pseudojets = sorted_by_pt(flav_jet_def(fj_flav));
         }
-        else if(flavAlg == GHS) {
+        else if (flavAlg == GHS) {
           flav_pseudojets = run_GHS(base_jets, GHS_ptcut,
-                                    GHS_beta, GHS_zcut, GHS_Rcut, GHS_alpha, GHS_omega);
+                                    GHS_alpha, GHS_omega, flav_recombiner);
         }
-        else if(flavAlg == SDF) {
+        else if (flavAlg == SDF) {
           flav_pseudojets = base_jets;
           sdFlavCalc(flav_pseudojets);
         }
-        else if(flavAlg == AKT) {
+        else if (flavAlg == AKT) {
           flav_pseudojets = base_jets;
         }
 
-
         const Jets& jets = FastJets::mkJets(flav_pseudojets, jetConstits_flav.particles());
-        //const Jets& jets= jets_unordered.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30);
 
-        // Perform lepton-jet overlap and HT calculation
-
-
-
-
-        for( auto j: jets){
-          if(j.perp()>30 && std::abs(j.eta())<2.4) goodjets.push_back(j);
+        for (const Jet& j: jets) {
+          if (j.perp()>30 && std::abs(j.eta())<2.4) goodjets.push_back(j);
         }
 
-
-        //identification of bjets
+        //identification of bjets/cjets
         for (unsigned int i=0; i<goodjets.size(); i++ ) {
-          const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[5]%2) ==1 ;
+          const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[tagPID]%2) == 1;
           if (btagged) {
             jb_final.push_back(goodjets[i]);
-            if(alg1_first_btagged < 0) alg1_first_btagged = i;
+            if (alg1_first_btagged < 0) alg1_first_btagged = i;
           }
-          if(i==0) alg1_lead_is_btagged = btagged;
-          //if ( j.bTagged() ) { jb_final.push_back(j); }
-          //if  FlavHistory::current_flavour_of(jets[i]);
+          if (i==0) alg1_lead_is_btagged = btagged;
       }
-    }else{
+    } else {
 
-	const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
-	goodjets = fj.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30*GeV);
+        const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
+        goodjets = fj.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30*GeV);
 
+        //ATLAS STYLE TRUTH TAGGING
+        if (flavAlg == CONE) {
 
-	//ATLAS STYLE TRUTH TAGGING
-	if(flavAlg == CONE) {
+          const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
+          Particles bHadrons;
+          if (tagPID == 5) bHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
+          else if (tagPID == 4) bHadrons = HHs.cHadrons(Cuts::pT > 5*GeV);
 
-	  const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
-	  const Particles& bHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
-	  Particles matchedBs;
+          Particles matchedBs;
 
-	  for (const Jet& j : goodjets) {
-	    Jet closest_j;
-	    Particle closest_b;
-	    double minDR_j_b = 10;
+          for (const Jet& j : goodjets) {
+            Jet closest_j;
+            Particle closest_b;
+            double minDR_j_b = 10;
 
-	    for (const Particle& b : bHadrons) {
-	      bool alreadyMatched = false;
+            for (const Particle& b : bHadrons) {
+              bool alreadyMatched = false;
 
-	      for (const Particle& matchedB : matchedBs) {
-		alreadyMatched = matchedB.isSame(b);
-	      }
-	      if(alreadyMatched) continue;
-	      double DR_j_b = deltaR(j, b);
+              for (const Particle& matchedB : matchedBs) {
+                alreadyMatched = matchedB.isSame(b);
+              }
+              if(alreadyMatched) continue;
+              double DR_j_b = deltaR(j, b);
 
-	      if (DR_j_b < 0.3 && DR_j_b < minDR_j_b) {
-		minDR_j_b = DR_j_b;
-		closest_j = j;
-		closest_b = b;
-	      }
-	    }
-	    if (minDR_j_b < 0.3) {
-	      jb_final.push_back(closest_j);
-	      matchedBs.push_back(closest_b);
-	    }
-	  }
+              if (DR_j_b < 0.3 && DR_j_b < minDR_j_b) {
+                minDR_j_b = DR_j_b;
+                closest_j = j;
+                closest_b = b;
+              }
+            }
+            if (minDR_j_b < 0.3) {
+              jb_final.push_back(closest_j);
+              matchedBs.push_back(closest_b);
+            }
+          }
 
-	}else if(flavAlg==TAG){
-	  //CMS STYLE TAGGING
-	  for (const Jet& j : goodjets) {
-	    if ( j.bTagged() ) { jb_final.push_back(j); }
-	  }
-	}else if(flavAlg==OTAG){
-	  //CMS STYLE TAGGING, but requiring an odd number of btags
-	  for (const Jet& j : goodjets) {
-	    if( j.bTagged()){
-	      const int btags = j.bTags().size();
-	      if(btags%2 ==1)  jb_final.push_back(j);
-	    }
-	  }
-	}
-
+        } else if (flavAlg==TAG) {
+          //CMS STYLE TAGGING
+          for (const Jet& j : goodjets) {
+            if (tagPID == 5 && j.bTagged() ) { jb_final.push_back(j); }
+            if (tagPID == 4 && j.cTagged() ) { jb_final.push_back(j); }
+          }
+        } else if (flavAlg==OTAG) {
+          //CMS STYLE TAGGING, but requiring an odd number of btags
+          for (const Jet& j : goodjets) {
+            if( tagPID == 5 && j.bTagged()){
+              const int btags = j.bTags().size();
+              if(btags%2 == 1)  jb_final.push_back(j);
+            }
+            if( tagPID == 4 && j.cTagged()){
+              const int ctags = j.cTags().size();
+              if(ctags%2 == 1)  jb_final.push_back(j);
+            }
+          }
+        }
       }
+
+      // Algorithm-algorithm correlations
       if(flavAlg2 != NONE && flavAlg2 != TAG && flavAlg2 != OTAG && flavAlg2 != CONE){
 
         // NB. Veto has already been applied on leptons and photons used for dressing
 
         const FinalState& jetConstits_flav= applyProjection<FinalState>(event, "jetConstits");
 
-        if(debug){
-          std::cout<<"~~~~~~~~~~~~~Projection \n";
-          for (unsigned int i=0; i< jetConstits_flav.particles().size(); i++){
-            std::cout<< jetConstits_flav.particles()[i]<<std::endl;
-          }
-        }
-
-
-
         PseudoJets fj_flav = FastJets::mkClusterInputs(jetConstits_flav.particles());
-        for (unsigned int i=0; i<  fj_flav.size(); i++){
-          //	std::cout<<fj_flav[i].description()<<"\n";
+        for (unsigned int i=0; i<  fj_flav.size(); i++) {
+          if (debug) std::cout << fj_flav[i].description() << "\n";
           const int pdgid = jetConstits_flav.particles()[i].pid();
           fj_flav[i].set_user_info(new  fastjet::contrib::FlavHistory(pdgid));
         }
 
-
-        if(debug){
-          std::cout<<"Convert FS into pseudojets \n";
-          std::cout<<"~~~~~~~~~ FS \n";
-
-          for (unsigned int i=0; i<  fj_flav.size(); i++){
-            //	std::cout<<fj_flav[i].description()<<"\n";
-            std::cout<<"pseudo jet rap="<<fj_flav[i].rap()<<" pT="<<fj_flav[i].perp() <<" flav= "<< FlavHistory::current_flavour_of(fj_flav[i]).description()<<"\n";
-          }
-
-          std::cout<<"user info flav done \n";
-          std::cout<<"jet def descr = \n"<< flav_jet_def.description()<<"\n";
-          std::cout<<"jet def descr = \n"<< base_jet_def.description()<<"\n";
-        }
-
-
         vector<PseudoJet> base_jets = sorted_by_pt(base_jet_def(fj_flav));
         vector<PseudoJet> flav_pseudojets;
-        if(flavAlg2 == IFN || flavAlg2 == CMP) {
+
+        if (flavAlg2 == IFN || flavAlg2 == CMP) {
           flav_pseudojets = sorted_by_pt(flav_jet_def(fj_flav));
         }
-        else if(flavAlg2 == GHS) {
+        else if (flavAlg2 == GHS) {
           flav_pseudojets = run_GHS(base_jets, GHS_ptcut,
-                                    GHS_beta, GHS_zcut, GHS_Rcut, GHS_alpha, GHS_omega);
+                                    GHS_alpha, GHS_omega, flav_recombiner);
         }
-        else if(flavAlg2 == SDF) {
+        else if (flavAlg2 == SDF) {
           flav_pseudojets = base_jets;
           sdFlavCalc(flav_pseudojets);
         }
-        else if(flavAlg2 == AKT) {
+        else if (flavAlg2 == AKT) {
           flav_pseudojets = base_jets;
         }
 
         const Jets& jets = FastJets::mkJets(flav_pseudojets, jetConstits_flav.particles());
-        //const Jets& jets= jets_unordered.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30);
-
-        // Perform lepton-jet overlap and HT calculation
-
-
-
 
         for( auto j: jets){
           if(j.perp()>30 && std::abs(j.eta())<2.4) goodjets2.push_back(j);
@@ -577,57 +538,36 @@ namespace Rivet {
 
         //identification of bjets
         for (unsigned int i=0; i<goodjets2.size(); i++ ) {
-          const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets2[i])[5]%2) ==1 ;
+          const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets2[i])[tagPID]%2) ==1 ;
           if (btagged) {
             jb_final2.push_back(goodjets2[i]);
             if(alg2_first_btagged < 0) alg2_first_btagged = i;
           }
           if(i==0) alg2_lead_is_btagged = btagged;
-          //if ( j.bTagged() ) { jb_final2.push_back(j); }
-          //if  FlavHistory::current_flavour_of(jets[i]);
         }
       } /// at this point we have the flav alg to compare too
 
-      if(goodjets.size() != 0 && goodjets2.size() != 0) {
-        if(alg1_lead_is_btagged && alg2_lead_is_btagged) _h_compare->fill(LEAD_TAGGED_BOTH); // { cout<<"lead is btagged in alg1 and alg2.\n"; }
-        else if(alg1_lead_is_btagged)                    _h_compare->fill(LEAD_TAGGED_ALG1); //{ cout<<"lead is btagged in alg1 only.\n"; exit(1); }
-        else if(alg2_lead_is_btagged)                    _h_compare->fill(LEAD_TAGGED_ALG2); //{ cout<<"lead is btagged in alg2 only.\n"; exit(1); }
-        else                                             {
-          // cout<<"lead is NOT btagged in either alg1 ("<<alg1_first_btagged<<") or alg2 ("<<alg2_first_btagged<<").\n";
+      if (goodjets.size() != 0 && goodjets2.size() != 0) {
+        if (alg1_lead_is_btagged && alg2_lead_is_btagged) _h_compare->fill(LEAD_TAGGED_BOTH);
+        else if (alg1_lead_is_btagged)                    _h_compare->fill(LEAD_TAGGED_ALG1);
+        else if (alg2_lead_is_btagged)                    _h_compare->fill(LEAD_TAGGED_ALG2);
+        else {
           if(alg1_first_btagged < 0 && alg2_first_btagged < 0) _h_compare->fill(NO_TAG_BOTH);
           else if(alg1_first_btagged == alg2_first_btagged)    _h_compare->fill(SUBLEAD_TAG_AGREE);
           else                                                 _h_compare->fill(SUBLEAD_TAG_DISAGREE);
         }
       }
-      // else {
-      //   cout<<"no good jets\n";
-      // }
-
-      //cout<<flavAlgName()<<" "<<"goodjets: "<<goodjets.size()<<", btagged: "<<jb_final.size()<<"\n";
-
-
-      // if(jb_final.size() >0){
-
-      //   std::cout<<"Found bjet!\n";
-      //   for (unsigned int i=0; i<event.allParticles().size(); i++){
-      //     std::cout<<event.allParticles()[i]<<std::endl;
-      //   }
-      // }
-      double Ht = 0;
-
-      for (const Jet& j : goodjets) {
-	      Ht += j.pT();
-      }
-
-
-
 
       //Event weight
       const double w = 0.5;
 
       //histogram filling
-
       if ((ee_event || mm_event) && goodjets.size() > 0) {
+        double Ht = 0;
+
+        for (const Jet& j : goodjets) {
+          Ht += j.pT();
+        }
 
         FourMomentum j1(goodjets[0].momentum());
 
@@ -683,9 +623,9 @@ namespace Rivet {
             _h_Zbb_mass_bb->fill(Zbb.mass(),w);
 
             _h_Dphi_bb->fill(deltaPhi(b1,b2),w);
-	    if (deltaR(b1,b2)>0.5) {
-	      _h_DR_bb->fill(deltaR(b1,b2),w);
-	    }
+            if (deltaR(b1,b2)>0.5) {
+              _h_DR_bb->fill(deltaR(b1,b2),w);
+            }
 
             double DR_Z_b1(0.), DR_Z_b2(0.);
             if ( ee_event ) {
@@ -767,7 +707,6 @@ namespace Rivet {
       normalize(_h_mass);
     }
 
-
   private:
 
     /// @name Histograms
@@ -814,9 +753,6 @@ namespace Rivet {
 
     // GHS parameters:
     double GHS_alpha; // < flav-kt distance parameter alpha
-    double GHS_beta; // < SoftDrop parameter beta for flavour clusters
-    double GHS_zcut; // < SoftDrop zcut for flavour clusters
-    double GHS_Rcut; // < Rcut parameter
     double GHS_omega; // < omega parameter for GHS_Omega (omega = 0 uses DeltaR_ij^2)
     double GHS_ptcut; // < overall ptcut
 
@@ -836,6 +772,8 @@ namespace Rivet {
       CONE = 7,
       NONE = 8
     };
+
+    int tagPID = 5;
 
     std::string flavAlgName() {
       if(flavAlg == IFN) return "IFN";
