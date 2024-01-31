@@ -601,7 +601,7 @@ namespace Rivet {
           _h_ang05_b->fill(ang05(jb_final[0].pseudojet()),w);
           _h_ang10_b->fill(ang10(jb_final[0].pseudojet()),w);
           _h_ang20_b->fill(ang20(jb_final[0].pseudojet()),w);
-          _h_mass->fill(b1.mass()/b1.pt(),w);
+          _h_mass_b->fill(b1.mass()/b1.pt(),w);
 
           if ( jb_final.size() > 1 ) {
 
