@@ -309,6 +309,20 @@ namespace Rivet {
 
       book(_h_compare,"compare_algs",6,-0.5,5.5);
 
+      book(_h_first_jet_pt_by_cat[LEAD_TAGGED_BOTH], "jet_pt_LEAD_TAGGED_BOTH", refData(1,1,1) );
+      book(_h_first_jet_pt_by_cat[LEAD_TAGGED_ALG1], "jet_pt_LEAD_TAGGED_ALG1", refData(1,1,1) );
+      book(_h_first_jet_pt_by_cat[LEAD_TAGGED_ALG2], "jet_pt_LEAD_TAGGED_ALG2", refData(1,1,1) );
+      book(_h_first_jet_pt_by_cat[SUBLEAD_TAG_AGREE], "jet_pt_LEAD_TAG_AGREE", refData(1,1,1) );
+      book(_h_first_jet_pt_by_cat[SUBLEAD_TAG_DISAGREE], "jet_pt_LEAD_TAG_DISAGREE", refData(1,1,1) );
+      book(_h_first_jet_pt_by_cat[NO_TAG_BOTH], "jet_pt_NO_TAG_BOTH", refData(1,1,1) );
+
+      book(_h_first_bjet_pt_by_cat[LEAD_TAGGED_BOTH], "bjet_pt_LEAD_TAGGED_BOTH", refData(1,1,1) );
+      book(_h_first_bjet_pt_by_cat[LEAD_TAGGED_ALG1], "bjet_pt_LEAD_TAGGED_ALG1", refData(1,1,1) );
+      book(_h_first_bjet_pt_by_cat[LEAD_TAGGED_ALG2], "bjet_pt_LEAD_TAGGED_ALG2", refData(1,1,1) );
+      book(_h_first_bjet_pt_by_cat[SUBLEAD_TAG_AGREE], "bjet_pt_LEAD_TAG_AGREE", refData(1,1,1) );
+      book(_h_first_bjet_pt_by_cat[SUBLEAD_TAG_DISAGREE], "bjet_pt_LEAD_TAG_DISAGREE", refData(1,1,1) );
+      book(_h_first_bjet_pt_by_cat[NO_TAG_BOTH], "bjet_pt_NO_TAG_BOTH", refData(1,1,1) );
+
       book( _h_ang05, "ang05",  20, 0, 1);
       book( _h_ang10, "ang10",  20, 0, 1);
       book( _h_ang20, "ang20",  20, 0, 1);
@@ -547,16 +561,18 @@ namespace Rivet {
         }
       } /// at this point we have the flav alg to compare too
 
+      int cat = -1;
       if (goodjets.size() != 0 && goodjets2.size() != 0) {
-        if (alg1_lead_is_btagged && alg2_lead_is_btagged) _h_compare->fill(LEAD_TAGGED_BOTH);
-        else if (alg1_lead_is_btagged)                    _h_compare->fill(LEAD_TAGGED_ALG1);
-        else if (alg2_lead_is_btagged)                    _h_compare->fill(LEAD_TAGGED_ALG2);
+        if (alg1_lead_is_btagged && alg2_lead_is_btagged)   cat = LEAD_TAGGED_BOTH;   //_h_compare->fill(LEAD_TAGGED_BOTH);
+        else if (alg1_lead_is_btagged)                    cat = LEAD_TAGGED_ALG1; //_h_compare->fill(LEAD_TAGGED_ALG1);
+        else if (alg2_lead_is_btagged)                    cat = LEAD_TAGGED_ALG2; //_h_compare->fill(LEAD_TAGGED_ALG2);
         else {
-          if(alg1_first_btagged < 0 && alg2_first_btagged < 0) _h_compare->fill(NO_TAG_BOTH);
-          else if(alg1_first_btagged == alg2_first_btagged)    _h_compare->fill(SUBLEAD_TAG_AGREE);
-          else                                                 _h_compare->fill(SUBLEAD_TAG_DISAGREE);
+          if(alg1_first_btagged < 0 && alg2_first_btagged < 0) cat = NO_TAG_BOTH; // _h_compare->fill(NO_TAG_BOTH);
+          else if(alg1_first_btagged == alg2_first_btagged)    cat = SUBLEAD_TAG_AGREE; //_h_compare->fill(SUBLEAD_TAG_AGREE);
+          else                                                 cat = SUBLEAD_TAG_DISAGREE; //_h_compare->fill(SUBLEAD_TAG_DISAGREE);
         }
-      }
+      } 
+      _h_compare->fill(cat);
 
       //Event weight
       const double w = 0.5;
@@ -572,6 +588,7 @@ namespace Rivet {
         FourMomentum j1(goodjets[0].momentum());
 
         _h_first_jet_pt->fill(j1.pt(),w);
+        _h_first_jet_pt_by_cat[cat]->fill(j1.pt(),w);
         _h_first_jet_abseta->fill(fabs(j1.eta()),w);
         if ( ee_event ) _h_Z_pt->fill(zees[0].pt(),w);
         if ( mm_event ) _h_Z_pt->fill(zmumus[0].pt(),w);
@@ -591,6 +608,7 @@ namespace Rivet {
           _h_bjet_multiplicity->fill(1.,w);
 
           _h_first_bjet_pt_b->fill(b1.pt(),w);
+          _h_first_bjet_pt_by_cat[cat]->fill(j1.pt(),w);
           _h_first_bjet_abseta_b->fill(fabs(b1.eta()),w);
           if ( ee_event ) _h_Z_pt_b->fill(zees[0].pt(),w);
           if ( mm_event ) _h_Z_pt_b->fill(zmumus[0].pt(),w);
@@ -743,6 +761,9 @@ namespace Rivet {
       NO_TAG_BOTH = 5,
     };
     Histo1DPtr     _h_compare;
+
+    std::array<Histo1DPtr,6>  _h_first_jet_pt_by_cat;
+    std::array<Histo1DPtr,6>  _h_first_bjet_pt_by_cat;
 
     JetDefinition base_jet_def;
     JetDefinition flav_jet_def;
