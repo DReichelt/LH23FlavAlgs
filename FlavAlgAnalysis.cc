@@ -114,6 +114,7 @@ namespace Rivet {
 
       if ( getOption("ALG") == "IFN" )       flavAlg = IFN;
       else if ( getOption("ALG") == "CMP" )  flavAlg = CMP;
+      else if ( getOption("ALG") == "CMP2" ) flavAlg = CMP2;
       else if ( getOption("ALG") == "GHS" )  flavAlg = GHS;
       else if ( getOption("ALG") == "SDF" )  flavAlg = SDF;
       else if ( getOption("ALG") == "AKT" )  flavAlg = AKT;
@@ -127,6 +128,7 @@ namespace Rivet {
 
       if ( getOption("ALG2") == "IFN" )       flavAlg2 = IFN;
       else if ( getOption("ALG2") == "CMP" )  flavAlg2 = CMP;
+      else if ( getOption("ALG2") == "CMP2" ) flavAlg2 = CMP2;
       else if ( getOption("ALG2") == "GHS" )  flavAlg2 = GHS;
       else if ( getOption("ALG2") == "SDF" )  flavAlg2 = SDF;
       else if ( getOption("ALG2") == "AKT" )  flavAlg2 = AKT;
@@ -201,7 +203,7 @@ namespace Rivet {
         flav_jet_def = JetDefinition(new IFNPlugin(base_jet_def, alpha, omega, flav_summation));
         flav_jet_def.delete_plugin_when_unused();
       }
-      else if ( flavAlg == CMP ) {
+      else if ( flavAlg == CMP || flavAlg == CMP2 ) {
         // CMP parameters:
         // CMP 'a' parameter in
         //   kappa_ij = 1/a * (kT_i^2 + kT_j^2) / (2*kT_max^2)
@@ -246,7 +248,7 @@ namespace Rivet {
         flav_jet_def2= JetDefinition(new IFNPlugin(base_jet_def, alpha, omega, flav_summation));
         flav_jet_def2.delete_plugin_when_unused();
       }
-      else if ( flavAlg2 == CMP ) {
+      else if ( flavAlg2 == CMP || flavAlg2 == CMP2) {
         // CMP parameters:
         // CMP 'a' parameter in
         //   kappa_ij = 1/a * (kT_i^2 + kT_j^2) / (2*kT_max^2)
@@ -400,7 +402,9 @@ namespace Rivet {
         for (unsigned int i=0; i<  fj_flav.size(); i++) {
           if (debug) std::cout<<fj_flav[i].description()<<"\n";
           const int pdgid = jetConstits_flav.particles()[i].pid();
-          fj_flav[i].set_user_info(new  fastjet::contrib::FlavHistory(pdgid));
+          fastjet::contrib::FlavInfo flav_info_init(pdgid);
+          if (flavAlg == CMP2) flav_info_init.reset_all_but_flav(tagPID);
+          fj_flav[i].set_user_info(new fastjet::contrib::FlavHistory(const_cast<const fastjet::contrib::FlavInfo&>(flav_info_init)));
         }
 
         if (debug) {
@@ -419,7 +423,7 @@ namespace Rivet {
 
         vector<PseudoJet> base_jets = sorted_by_pt(base_jet_def(fj_flav));
         vector<PseudoJet> flav_pseudojets;
-        if (flavAlg == IFN || flavAlg == CMP) {
+        if (flavAlg == IFN || flavAlg == CMP || flavAlg == CMP2) {
           flav_pseudojets = sorted_by_pt(flav_jet_def(fj_flav));
         }
         else if (flavAlg == GHS) {
@@ -436,8 +440,27 @@ namespace Rivet {
 
         const Jets& jets = FastJets::mkJets(flav_pseudojets, jetConstits_flav.particles());
 
+        if (debug) {
+          std::cout<<"The set of clustered pseudo jets \n";
+
+            for (const PseudoJet& j: flav_pseudojets) {
+            std::cout<<"jet rap="<<j.rap()<<" pT="<<j.perp() <<" flav= "<< FlavHistory::current_flavour_of(j).description()<<"\n";
+          }
+          std::cout<<"The set of clustered jets \n";
+
+            for (const Jet& j: jets) {
+            std::cout<<"jet rap="<<j.rap()<<" pT="<<j.perp() <<" flav= "<< FlavHistory::current_flavour_of(j).description()<<"\n";
+          }
+        }
         for (const Jet& j: jets) {
           if (j.perp()>30 && std::abs(j.eta())<2.4) goodjets.push_back(j);
+        }
+        if (debug) {
+          std::cout<<"The set of good jets \n";
+
+            for (const Jet& j: goodjets) {
+            std::cout<<"jet rap="<<j.rap()<<" pT="<<j.perp() <<" flav= "<< FlavHistory::current_flavour_of(j).description()<<"\n";
+          }
         }
 
         //identification of bjets/cjets
@@ -449,6 +472,14 @@ namespace Rivet {
           }
           if (i==0) alg1_lead_is_btagged = btagged;
       }
+        
+        if (debug) {
+          std::cout<<"The set of good b jets \n";
+
+            for (const Jet& j: jb_final) {
+            std::cout<<"jet rap="<<j.rap()<<" pT="<<j.perp() <<" flav= "<< FlavHistory::current_flavour_of(j).description()<<"\n";
+          }
+        }
     } else {
 
         const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
@@ -528,7 +559,7 @@ namespace Rivet {
         vector<PseudoJet> base_jets = sorted_by_pt(base_jet_def(fj_flav));
         vector<PseudoJet> flav_pseudojets;
 
-        if (flavAlg2 == IFN || flavAlg2 == CMP) {
+        if (flavAlg2 == IFN || flavAlg2 == CMP || flavAlg2 == CMP2) {
           flav_pseudojets = sorted_by_pt(flav_jet_def(fj_flav));
         }
         else if (flavAlg2 == GHS) {
@@ -791,7 +822,8 @@ namespace Rivet {
       TAG = 5,
       OTAG = 6,
       CONE = 7,
-      NONE = 8
+      NONE = 8,
+      CMP2 = 9
     };
 
     int tagPID = 5;
@@ -799,6 +831,7 @@ namespace Rivet {
     std::string flavAlgName() {
       if(flavAlg == IFN) return "IFN";
       else if(flavAlg == CMP) return "CMP";
+      else if(flavAlg == CMP2) return "CMP2";
       else if(flavAlg == GHS) return "GHS";
       else if(flavAlg == SDF) return "SDF";
       else if(flavAlg == AKT) return "AKT";
