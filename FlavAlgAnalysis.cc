@@ -271,7 +271,7 @@ namespace Rivet {
       else if ( flavAlg2 == SDF ) {
         double zcut = 0.1;
         double beta = 1;
-        sdFlavCalc2 = SDFlavourCalc(beta,zcut,R);
+        sdFlavCalc = SDFlavourCalc(beta,zcut,R);
       }
       else if ( flavAlg2 == AKT ) {
         flav_jet_def2 = base_jet_def;
@@ -560,7 +560,7 @@ namespace Rivet {
         vector<PseudoJet> flav_pseudojets;
 
         if (flavAlg2 == IFN || flavAlg2 == CMP || flavAlg2 == CMP2) {
-          flav_pseudojets = sorted_by_pt(flav_jet_def(fj_flav));
+          flav_pseudojets = sorted_by_pt(flav_jet_def2(fj_flav));
         }
         else if (flavAlg2 == GHS) {
           flav_pseudojets = run_GHS(base_jets, GHS_ptcut,
@@ -809,7 +809,6 @@ namespace Rivet {
     double GHS_ptcut; // < overall ptcut
 
     SDFlavourCalc sdFlavCalc;
-    SDFlavourCalc sdFlavCalc2;
 
     int flavAlg;
     int flavAlg2;
