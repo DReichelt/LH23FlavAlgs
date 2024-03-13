@@ -389,6 +389,7 @@ namespace Rivet {
       int alg1_first_btagged = -1;
       int alg2_first_btagged = -1;
       FourMomentum bTagMom;
+      bool bTagInJet = false;
 
       if (flavAlg != TAG && flavAlg != OTAG && flavAlg != CONE) { // Flavoured jet algorithms
 
@@ -473,16 +474,11 @@ namespace Rivet {
           const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[tagPID]%2) == 1;
           if (btagged) {
             if(jb_final.size() == 0) {
-              bool found = false;
               for(const Particle& j: goodjets[i].constituents()) {
                 if(std::abs(j.pid()) == tagPID) {
-                  if(!found || j.pT() > bTagMom.pT()) bTagMom = j.momentum();
-                  found = true;
+                  if(!bTagInJet || j.pT() > bTagMom.pT()) bTagMom = j.momentum();
+                  bTagInJet = true;
                 }
-              }
-              if(!found) {
-                cout<<"no flavour found in tagged jet";
-                exit(1);
               }
             }
             jb_final.push_back(goodjets[i]);
@@ -675,7 +671,7 @@ namespace Rivet {
           _h_ang20_b->fill(ang20(jb_final[0].pseudojet()),w);
           _h_mass_b->fill(b1.mass()/b1.pt(),w);
 
-          if(tagIdHadrons.size() == 2) {
+          if(bTagInJet && tagIdHadrons.size() == 2) {
             const double dR = deltaR(tagIdHadrons[0],tagIdHadrons[1]);
             const double relPt = bTagMom.pT()/b1.pT();
             _h_bbcorr->fill(dR,relPt,w);
