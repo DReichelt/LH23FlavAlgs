@@ -7,12 +7,14 @@
 #include "Rivet/Projections/FastJets.hh"
 #include "Rivet/Projections/ZFinder.hh"
 #include "Rivet/Math/Vector4.hh"
-#include "fastjet/contrib/IFNPlugin.hh"
-#include "fastjet/contrib/CMPPlugin.hh"
-#include "fastjet/contrib/GHSAlgo.hh"
-#include "fastjet/contrib/SDFlavPlugin.hh"
+#include "IFNPlugin/IFNPlugin.hh"
+#include "CMPPlugin/CMPPlugin.hh"
+#include "GHSAlgo/GHSAlgo.hh"
+#include "SDFlavPlugin/SDFlavPlugin.hh"
 
 //#define DebugLog
+
+#define hepmc3
 
 using namespace fastjet;
 using namespace fastjet::contrib;
@@ -334,6 +336,8 @@ namespace Rivet {
       book( _h_ang20_b, "ang20_b",  20, 0, 1);
       book( _h_mass_b, "mass_b",  20, 0, 1);
 
+      book(_h_bbcorr, "bb_correlations", 20,0,9, 20,0,1);
+
       ang05 = Angularity(0.05, R);
       ang10 = Angularity(0.1, R);
       ang20 = Angularity(0.2, R);
@@ -384,6 +388,7 @@ namespace Rivet {
       bool alg2_lead_is_btagged = false;
       int alg1_first_btagged = -1;
       int alg2_first_btagged = -1;
+      FourMomentum bTagMom;
 
       if (flavAlg != TAG && flavAlg != OTAG && flavAlg != CONE) { // Flavoured jet algorithms
 
@@ -467,12 +472,24 @@ namespace Rivet {
         for (unsigned int i=0; i<goodjets.size(); i++ ) {
           const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[tagPID]%2) == 1;
           if (btagged) {
+            if(jb_final.size() == 0) {
+              bool found = false;
+              for(const Particle& j: goodjets[i].constituents()) {
+                if(std::abs(j.pid()) == tagPID) {
+                  if(!found || j.pT() > bTagMom.pT()) bTagMom = j.momentum();
+                  found = true;
+                }
+              }
+              if(!found) {
+                cout<<"no flavour found in tagged jet";
+                exit(1);
+              }
+            }
             jb_final.push_back(goodjets[i]);
             if (alg1_first_btagged < 0) alg1_first_btagged = i;
           }
           if (i==0) alg1_lead_is_btagged = btagged;
       }
-        
         if (debug) {
           std::cout<<"The set of good b jets \n";
 
@@ -602,11 +619,17 @@ namespace Rivet {
           else if(alg1_first_btagged == alg2_first_btagged)    cat = SUBLEAD_TAG_AGREE; //_h_compare->fill(SUBLEAD_TAG_AGREE);
           else                                                 cat = SUBLEAD_TAG_DISAGREE; //_h_compare->fill(SUBLEAD_TAG_DISAGREE);
         }
-      } 
+      }
       _h_compare->fill(cat);
 
       //Event weight
       const double w = 0.5;
+
+      const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
+      Particles tagIdHadrons;
+      if (tagPID == 5) tagIdHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
+      else if (tagPID == 4) tagIdHadrons = HHs.cHadrons(Cuts::pT > 5*GeV);
+
 
       //histogram filling
       if ((ee_event || mm_event) && goodjets.size() > 0) {
@@ -651,6 +674,12 @@ namespace Rivet {
           _h_ang10_b->fill(ang10(jb_final[0].pseudojet()),w);
           _h_ang20_b->fill(ang20(jb_final[0].pseudojet()),w);
           _h_mass_b->fill(b1.mass()/b1.pt(),w);
+
+          if(tagIdHadrons.size() == 2) {
+            const double dR = deltaR(tagIdHadrons[0],tagIdHadrons[1]);
+            const double relPt = bTagMom.pT()/b1.pT();
+            _h_bbcorr->fill(dR,relPt,w);
+          }
 
           if ( jb_final.size() > 1 ) {
 
@@ -754,6 +783,8 @@ namespace Rivet {
       normalize(_h_ang10_b);
       normalize(_h_ang20_b);
       normalize(_h_mass);
+
+      normalize(_h_bbcorr);
     }
 
   private:
@@ -782,6 +813,8 @@ namespace Rivet {
     Histo1DPtr     _h_ang05, _h_ang10, _h_ang20, _h_mass;
     Histo1DPtr     _h_ang05_b, _h_ang10_b, _h_ang20_b, _h_mass_b;
     Angularity     ang05, ang10, ang20;
+
+    Histo2DPtr     _h_bbcorr;
 
     enum {
       LEAD_TAGGED_BOTH = 0,
