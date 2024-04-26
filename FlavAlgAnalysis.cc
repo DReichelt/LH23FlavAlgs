@@ -7,14 +7,12 @@
 #include "Rivet/Projections/FastJets.hh"
 #include "Rivet/Projections/ZFinder.hh"
 #include "Rivet/Math/Vector4.hh"
-#include "IFNPlugin/IFNPlugin.hh"
-#include "CMPPlugin/CMPPlugin.hh"
-#include "GHSAlgo/GHSAlgo.hh"
-#include "SDFlavPlugin/SDFlavPlugin.hh"
+#include "fastjet/contrib/IFNPlugin.hh"
+#include "fastjet/contrib/CMPPlugin.hh"
+#include "fastjet/contrib/GHSAlgo.hh"
+#include "fastjet/contrib/SDFlavPlugin.hh"
 
 //#define DebugLog
-
-#define hepmc3
 
 using namespace fastjet;
 using namespace fastjet::contrib;
@@ -142,6 +140,9 @@ namespace Rivet {
       if ( getOption("TAGPID") == "4" ) tagPID = 4;
       else if ( getOption("TAGPID") == "5" ) tagPID = 5;
       else tagPID = 5; // b-jet tagging is the default
+
+      if ( getOption("DEBUG") == "1" ) debug = true;
+      else debug = false;
 
       FinalState fs; ///< @todo No cuts?
 
@@ -337,6 +338,7 @@ namespace Rivet {
       book( _h_mass_b, "mass_b",  20, 0, 1);
 
       book(_h_bbcorr, "bb_correlations", 20,0,9, 20,0,1);
+      book(_h_bbcorr_2, "bb_correlations_2", 20,0,9, 20,0,1);
 
       ang05 = Angularity(0.05, R);
       ang10 = Angularity(0.1, R);
@@ -590,7 +592,7 @@ namespace Rivet {
         const Jets& jets = FastJets::mkJets(flav_pseudojets, jetConstits_flav.particles());
 
         for( auto j: jets){
-          if(j.perp()>30 && std::abs(j.eta())<2.4) goodjets2.push_back(j);
+          if (j.perp()>30 && std::abs(j.eta())<2.4) goodjets2.push_back(j);
         }
 
 
@@ -675,6 +677,8 @@ namespace Rivet {
             const double dR = deltaR(tagIdHadrons[0],tagIdHadrons[1]);
             const double relPt = bTagMom.pT()/b1.pT();
             _h_bbcorr->fill(dR,relPt,w);
+            if (alg1_lead_is_btagged && !alg2_lead_is_btagged)
+              _h_bbcorr_2->fill(dR,relPt,w);
           }
 
           if ( jb_final.size() > 1 ) {
@@ -781,6 +785,7 @@ namespace Rivet {
       normalize(_h_mass);
 
       normalize(_h_bbcorr);
+      normalize(_h_bbcorr_2);
     }
 
   private:
@@ -811,6 +816,7 @@ namespace Rivet {
     Angularity     ang05, ang10, ang20;
 
     Histo2DPtr     _h_bbcorr;
+    Histo2DPtr     _h_bbcorr_2;
 
     enum {
       LEAD_TAGGED_BOTH = 0,
