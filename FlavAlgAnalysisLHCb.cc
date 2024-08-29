@@ -322,9 +322,9 @@ namespace Rivet {
       book(_h_bbcorr, "bb_correlations", 5,0,5, 5,0,0.5);
       book(_h_bbcorr_2, "bb_correlations_2", 5,0,5, 5,0,0.5);
 
-      ang05 = Angularity(0.05, R);
-      ang10 = Angularity(0.1, R);
-      ang20 = Angularity(0.2, R);
+      ang05 = Angularity(0.5, R);
+      ang10 = Angularity(1.0, R);
+      ang20 = Angularity(2.0, R);
 
       if (debug) {
         std::cout << "Jet descr \n";

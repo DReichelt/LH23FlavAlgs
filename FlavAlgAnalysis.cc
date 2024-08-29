@@ -342,9 +342,9 @@ namespace Rivet {
 
       book(_h_pTb1_highPT, "bjet_pT_highPT", 40,200,1200.);
 
-      ang05 = Angularity(0.05, R);
-      ang10 = Angularity(0.1, R);
-      ang20 = Angularity(0.2, R);
+      ang05 = Angularity(0.5, R);
+      ang10 = Angularity(1.0, R);
+      ang20 = Angularity(2.0, R);
 
       if (debug) {
         std::cout << "Jet descr \n";
