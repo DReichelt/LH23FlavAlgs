@@ -282,6 +282,9 @@ namespace Rivet {
 
       //Histograms booking
 
+      book(_h_fidxsec,"fidxsec",1,0.,1.);
+      book(_h_fidxsec_b,"fidxsec_b",1,0.,1.);
+
       book(_h_first_bjet_pt_b ,1,1,1);
       book(_h_first_bjet_abseta_b ,3,1,1);
       book(_h_Z_pt_b ,5,1,1);
@@ -340,7 +343,8 @@ namespace Rivet {
       book(_h_bbcorr, "bb_correlations",     5,0,5, 5,0,0.5);
       book(_h_bbcorr_2, "bb_correlations_2", 5,0,5, 5,0,0.5);
 
-      book(_h_pTb1_highPT, "bjet_pT_highPT", 40,200,1200.);
+      book(_h_pTb1_highPT, "bjet_pT_highPT",  40, 200., 1200.);
+      book(_h_pTj1_highPT, "jet_pT_highPT" , 40, 200., 1200.);
 
       ang05 = Angularity(0.5, R);
       ang10 = Angularity(1.0, R);
@@ -620,19 +624,24 @@ namespace Rivet {
           else                                                 cat = SUBLEAD_TAG_DISAGREE; //_h_compare->fill(SUBLEAD_TAG_DISAGREE);
         }
       }
-      _h_compare->fill(cat);
 
       //Event weight
       const double w = 0.5;
+      _h_compare->fill(cat,w);
 
       const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
       Particles tagIdHadrons;
       if (tagPID == 5) tagIdHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
       else if (tagPID == 4) tagIdHadrons = HHs.cHadrons(Cuts::pT > 5*GeV);
 
-
       //histogram filling
+      // double z_pt;
+      // if ( ee_event ) z_pt = zees[0].pt();
+      // if ( mm_event ) z_pt = zmumus[0].pt();
+      // Do we need a z_pt > 20*GeV cut here?
+
       if ((ee_event || mm_event) && goodjets.size() > 0) {
+        _h_fidxsec->fill(0.5,w);
         double Ht = 0;
 
         for (const Jet& j : goodjets) {
@@ -642,6 +651,7 @@ namespace Rivet {
         FourMomentum j1(goodjets[0].momentum());
 
         _h_first_jet_pt->fill(j1.pt(),w);
+        _h_pTj1_highPT->fill(j1.pt(),w);
         _h_first_jet_pt_by_cat[cat]->fill(j1.pt(),w);
         _h_first_jet_abseta->fill(fabs(j1.eta()),w);
         if ( ee_event ) _h_Z_pt->fill(zees[0].pt(),w);
@@ -656,6 +666,7 @@ namespace Rivet {
         _h_mass->fill(j1.mass()/j1.pt(),w);
 
         if ( jb_final.size() > 0 ) {
+          _h_fidxsec_b->fill(0.5,w);
 
           FourMomentum b1(jb_final[0].momentum());
 
@@ -765,6 +776,18 @@ namespace Rivet {
       scale( _h_HT_b, norm/100. );
       scale( _h_Dphi_Zb_b, norm/100. );
 
+      scale( _h_fidxsec, norm);
+      scale( _h_fidxsec_b, norm);
+
+      scale( _h_pTb1_highPT, norm);
+      scale( _h_pTj1_highPT, norm);
+
+      scale( _h_first_jet_pt, norm);
+      scale( _h_first_jet_abseta, norm);
+      scale( _h_Z_pt, norm);
+      scale( _h_HT, norm);
+      scale( _h_Dphi_Zj, norm);
+
       scale( _h_first_bjet_pt_bb, norm);
       scale( _h_second_bjet_pt_bb, norm);
       scale( _h_Z_pt_bb, norm);
@@ -777,35 +800,37 @@ namespace Rivet {
 
       scale( _h_bjet_multiplicity, norm );
 
-      normalize(_h_compare);
-      normalize(_h_ang05);
-      normalize(_h_ang10);
-      normalize(_h_ang20);
-      normalize(_h_mass);
-      normalize(_h_ang05_b);
-      normalize(_h_ang10_b);
-      normalize(_h_ang20_b);
-      normalize(_h_mass);
+      scale( _h_compare, norm);
+      scale( _h_ang05, norm);
+      scale( _h_ang10, norm);
+      scale( _h_ang20, norm);
+      scale( _h_mass, norm);
+      scale( _h_ang05_b, norm);
+      scale( _h_ang10_b, norm);
+      scale( _h_ang20_b, norm);
+      scale( _h_mass_b, norm);
 
-      normalize(_h_bbcorr);
-      normalize(_h_bbcorr_2);
+      scale( _h_bbcorr, norm);
+      scale( _h_bbcorr_2, norm);
     }
 
   private:
 
     /// @name Histograms
 
-    Histo1DPtr     _h_first_jet_pt, _h_first_bjet_pt_b, _h_pTb1_highPT;
+    Histo1DPtr     _h_fidxsec, _h_fidxsec_b;
+
+    Histo1DPtr     _h_first_jet_pt, _h_first_bjet_pt_b, _h_pTj1_highPT, _h_pTb1_highPT;
     Histo1DPtr     _h_first_jet_abseta, _h_first_bjet_abseta_b;
     Histo1DPtr     _h_Z_pt, _h_Z_pt_b;
     Histo1DPtr     _h_HT, _h_HT_b;
     Histo1DPtr     _h_Dphi_Zj, _h_Dphi_Zb_b;
 
-    Scatter2DPtr     _h_first_jet_pt_ratio;
-    Scatter2DPtr     _h_first_jet_abseta_ratio;
-    Scatter2DPtr     _h_Z_pt_ratio;
-    Scatter2DPtr     _h_HT_ratio;
-    Scatter2DPtr     _h_Dphi_Zj_ratio;
+    Scatter2DPtr   _h_first_jet_pt_ratio;
+    Scatter2DPtr   _h_first_jet_abseta_ratio;
+    Scatter2DPtr   _h_Z_pt_ratio;
+    Scatter2DPtr   _h_HT_ratio;
+    Scatter2DPtr   _h_Dphi_Zj_ratio;
 
     Histo1DPtr     _h_first_bjet_pt_bb, _h_second_bjet_pt_bb;
     Histo1DPtr     _h_Z_pt_bb;
