@@ -98,11 +98,11 @@ namespace Rivet {
   };
 
 
-  class FlavAlgAnalysis : public Analysis {
+  class FlavAlgAnalysisLHCb : public Analysis {
   public:
 
     /// Constructor
-    DEFAULT_RIVET_ANALYSIS_CTOR(FlavAlgAnalysis);
+    DEFAULT_RIVET_ANALYSIS_CTOR(FlavAlgAnalysisLHCb);
 
     /// Book histograms and initialise projections before the run
     void init() {
@@ -149,10 +149,10 @@ namespace Rivet {
       HeavyHadrons HHs(Cuts::pT > 5*GeV);
       declare(HHs, "HeavyHadrons");
 
-      ZFinder zeeFinder(fs, Cuts::abseta < 2.4 && Cuts::pT > 20*GeV, PID::ELECTRON, 71.0*GeV, 111.0*GeV, 0.1 );
+      ZFinder zeeFinder(fs, Cuts::abseta > 2. && Cuts::abseta < 4.5 && Cuts::pT > 20*GeV, PID::ELECTRON, 60.0*GeV, 120.0*GeV, 0.1 );
       declare(zeeFinder, "ZeeFinder");
 
-      ZFinder zmumuFinder(fs, Cuts::abseta < 2.4 && Cuts::pT > 20*GeV, PID::MUON, 71.0*GeV, 111.0*GeV, 0.1 );
+      ZFinder zmumuFinder(fs, Cuts::abseta > 2. && Cuts::abseta < 4.5 && Cuts::pT > 20*GeV, PID::MUON, 60.0*GeV, 120.0*GeV, 0.1 );
       declare(zmumuFinder, "ZmumuFinder");
 
       double R = 0.5;
@@ -282,54 +282,33 @@ namespace Rivet {
 
       //Histograms booking
 
-      book(_h_fidxsec,"fidxsec",1,0.,1.);
-      book(_h_fidxsec_b,"fidxsec_b",1,0.,1.);
+      book(_h_first_bjet_pt_b , "first_bjet_pt_b", 8, 20., 100.);
+      book(_h_first_bjet_abseta_b , "first_bjet_abseta_b", 8, 2.2, 4.2);
+      book(_h_Z_pt_b , "Z_pt_b", 8, 20., 100.);
+      book(_h_Z_absy_b , "Z_absy_b", 10, 2., 4.5);
 
-      book(_h_first_bjet_pt_b ,1,1,1);
-      book(_h_first_bjet_abseta_b ,3,1,1);
-      book(_h_Z_pt_b ,5,1,1);
-      book(_h_HT_b ,7,1,1);
-      book(_h_Dphi_Zb_b ,9,1,1);
+      book(_h_first_jet_pt , "first_jet_pt", 8, 20., 100.);
+      book(_h_first_jet_abseta , "first_jet_abseta", 8, 2.2, 4.2);
+      book(_h_Z_pt , "Z_pt", 8, 20., 100.);
+      book(_h_Z_absy , "Z_absy", 10, 2., 4.5);
 
-      book(_h_first_jet_pt_ratio ,2,1,1);
-      book(_h_first_jet_abseta_ratio ,4,1,1);
-      book(_h_Z_pt_ratio ,6,1,1);
-      book(_h_HT_ratio ,8,1,1);
-      book(_h_Dphi_Zj_ratio ,10,1,1);
-
-      book(_h_first_jet_pt, "first_jet_pt", refData(1,1,1) ); // (*_h_first_bjet_pt_b);
-      book(_h_first_jet_abseta, "first_jet_abseta", refData(3,1,1) ); // (*_h_first_bjet_abseta_b);
-      book(_h_Z_pt, "Z_pt", refData(5,1,1) ); // (*_h_Z_pt_b);
-      book(_h_HT, "HT", refData(7,1,1) ); // (*_h_HT_b);
-      book(_h_Dphi_Zj, "Dphi_Zj", refData(9,1,1) ); // (*_h_Dphi_Zb_b);
-
-      book(_h_first_bjet_pt_bb ,11,1,1);
-      book(_h_second_bjet_pt_bb ,12,1,1);
-      book(_h_Z_pt_bb ,13,1,1);
-      book(_h_bb_mass_bb ,14,1,1);
-      book(_h_Zbb_mass_bb ,15,1,1);
-      book(_h_Dphi_bb ,16,1,1);
-      book(_h_DR_bb ,17,1,1);
-      book(_h_DR_Zbmin_bb ,18,1,1);
-      book(_h_A_DR_Zb_bb ,19,1,1);
-
-      book(_h_bjet_multiplicity ,20,1,1);
+      book(_h_bjet_multiplicity , "bjet_multiplicity", 4,-0.5,3.5);
 
       book(_h_compare,"compare_algs",6,-0.5,5.5);
 
-      book(_h_first_jet_pt_by_cat[LEAD_TAGGED_BOTH], "jet_pt_LEAD_TAGGED_BOTH", refData(1,1,1) );
-      book(_h_first_jet_pt_by_cat[LEAD_TAGGED_ALG1], "jet_pt_LEAD_TAGGED_ALG1", refData(1,1,1) );
-      book(_h_first_jet_pt_by_cat[LEAD_TAGGED_ALG2], "jet_pt_LEAD_TAGGED_ALG2", refData(1,1,1) );
-      book(_h_first_jet_pt_by_cat[SUBLEAD_TAG_AGREE], "jet_pt_LEAD_TAG_AGREE", refData(1,1,1) );
-      book(_h_first_jet_pt_by_cat[SUBLEAD_TAG_DISAGREE], "jet_pt_LEAD_TAG_DISAGREE", refData(1,1,1) );
-      book(_h_first_jet_pt_by_cat[NO_TAG_BOTH], "jet_pt_NO_TAG_BOTH", refData(1,1,1) );
+      book(_h_first_jet_pt_by_cat[LEAD_TAGGED_BOTH], "jet_pt_LEAD_TAGGED_BOTH", 8, 20., 100. );
+      book(_h_first_jet_pt_by_cat[LEAD_TAGGED_ALG1], "jet_pt_LEAD_TAGGED_ALG1", 8, 20., 100. );
+      book(_h_first_jet_pt_by_cat[LEAD_TAGGED_ALG2], "jet_pt_LEAD_TAGGED_ALG2", 8, 20., 100. );
+      book(_h_first_jet_pt_by_cat[SUBLEAD_TAG_AGREE], "jet_pt_LEAD_TAG_AGREE", 8, 20., 100. );
+      book(_h_first_jet_pt_by_cat[SUBLEAD_TAG_DISAGREE], "jet_pt_LEAD_TAG_DISAGREE", 8, 20., 100. );
+      book(_h_first_jet_pt_by_cat[NO_TAG_BOTH], "jet_pt_NO_TAG_BOTH", 8, 20., 100. );
 
-      book(_h_first_bjet_pt_by_cat[LEAD_TAGGED_BOTH], "bjet_pt_LEAD_TAGGED_BOTH", refData(1,1,1) );
-      book(_h_first_bjet_pt_by_cat[LEAD_TAGGED_ALG1], "bjet_pt_LEAD_TAGGED_ALG1", refData(1,1,1) );
-      book(_h_first_bjet_pt_by_cat[LEAD_TAGGED_ALG2], "bjet_pt_LEAD_TAGGED_ALG2", refData(1,1,1) );
-      book(_h_first_bjet_pt_by_cat[SUBLEAD_TAG_AGREE], "bjet_pt_LEAD_TAG_AGREE", refData(1,1,1) );
-      book(_h_first_bjet_pt_by_cat[SUBLEAD_TAG_DISAGREE], "bjet_pt_LEAD_TAG_DISAGREE", refData(1,1,1) );
-      book(_h_first_bjet_pt_by_cat[NO_TAG_BOTH], "bjet_pt_NO_TAG_BOTH", refData(1,1,1) );
+      book(_h_first_bjet_pt_by_cat[LEAD_TAGGED_BOTH], "bjet_pt_LEAD_TAGGED_BOTH", 8, 20., 100. );
+      book(_h_first_bjet_pt_by_cat[LEAD_TAGGED_ALG1], "bjet_pt_LEAD_TAGGED_ALG1", 8, 20., 100. );
+      book(_h_first_bjet_pt_by_cat[LEAD_TAGGED_ALG2], "bjet_pt_LEAD_TAGGED_ALG2", 8, 20., 100. );
+      book(_h_first_bjet_pt_by_cat[SUBLEAD_TAG_AGREE], "bjet_pt_LEAD_TAG_AGREE", 8, 20., 100. );
+      book(_h_first_bjet_pt_by_cat[SUBLEAD_TAG_DISAGREE], "bjet_pt_LEAD_TAG_DISAGREE", 8, 20., 100. );
+      book(_h_first_bjet_pt_by_cat[NO_TAG_BOTH], "bjet_pt_NO_TAG_BOTH", 8, 20., 100. );
 
       book( _h_ang05, "ang05",  20, 0, 1);
       book( _h_ang10, "ang10",  20, 0, 1);
@@ -340,11 +319,8 @@ namespace Rivet {
       book( _h_ang20_b, "ang20_b",  20, 0, 1);
       book( _h_mass_b, "mass_b",  20, 0, 1);
 
-      book(_h_bbcorr, "bb_correlations",     5,0,5, 5,0,0.5);
+      book(_h_bbcorr, "bb_correlations", 5,0,5, 5,0,0.5);
       book(_h_bbcorr_2, "bb_correlations_2", 5,0,5, 5,0,0.5);
-
-      book(_h_pTb1_highPT, "bjet_pT_highPT",  40, 200., 1200.);
-      book(_h_pTj1_highPT, "jet_pT_highPT" , 40, 200., 1200.);
 
       ang05 = Angularity(0.5, R);
       ang10 = Angularity(1.0, R);
@@ -388,6 +364,10 @@ namespace Rivet {
         }
       }
 
+      // LHCb cuts on leptons
+      // double acceptance trick
+      if (theLeptons[0].eta()*theLeptons[1].eta() < 0.) vetoEvent;
+
       Jets goodjets;
       Jets jb_final;
       Jets goodjets2;
@@ -407,9 +387,12 @@ namespace Rivet {
 
         if (debug) {
           std::cout<<"~~~~~~~~~~~~~Projection \n";
+          FourMomentum tot = {0.,0.,0.,0.};
           for (unsigned int i=0; i< jetConstits_flav.particles().size(); i++) {
             std::cout << jetConstits_flav.particles()[i] << std::endl;
+            tot += jetConstits_flav.particles()[i].momentum();
           }
+          std::cout << "total = " << tot << std::endl;
         }
 
         PseudoJets fj_flav = FastJets::mkClusterInputs(jetConstits_flav.particles());
@@ -467,7 +450,7 @@ namespace Rivet {
           }
         }
         for (const Jet& j: jets) {
-          if (j.perp()>30 && std::abs(j.eta())<2.4) goodjets.push_back(j);
+          if (j.pT() > 20. && j.pT() < 100. && j.eta()*theLeptons[0].eta() >= 0. && 2.2 < fabs(j.eta()) && fabs(j.eta()) < 4.2) goodjets.push_back(j);
         }
         if (debug) {
           std::cout<<"The set of good jets \n";
@@ -504,7 +487,9 @@ namespace Rivet {
     } else {
 
         const FastJets fj = applyProjection<FastJets>(event, "AntiKt05Jets");
-        goodjets = fj.jetsByPt(Cuts::abseta < 2.4 && Cuts::pT > 30*GeV);
+        goodjets.clear();
+        for (auto j : fj.jetsByPt())
+          if (j.pT() > 20. && j.pT() < 100. && j.eta()*theLeptons[0].eta() >= 0. && 2.2 < fabs(j.eta()) && fabs(j.eta()) < 4.2) goodjets.push_back(j);
 
         //ATLAS STYLE TRUTH TAGGING
         if (flavAlg == CONE) {
@@ -598,7 +583,7 @@ namespace Rivet {
         const Jets& jets = FastJets::mkJets(flav_pseudojets, jetConstits_flav.particles());
 
         for( auto j: jets){
-          if (j.perp()>30 && std::abs(j.eta())<2.4) goodjets2.push_back(j);
+          if (j.pT() > 20. && j.pT() < 100. && j.eta()*theLeptons[0].eta() >= 0. && 2.2 < fabs(j.eta()) && fabs(j.eta()) < 4.2) goodjets2.push_back(j);
         }
 
 
@@ -624,24 +609,19 @@ namespace Rivet {
           else                                                 cat = SUBLEAD_TAG_DISAGREE; //_h_compare->fill(SUBLEAD_TAG_DISAGREE);
         }
       }
+      _h_compare->fill(cat);
 
       //Event weight
-      const double w = 0.5;
-      _h_compare->fill(cat,w);
+      const double w = 1.; // This is true because we only of generated muons for the LHCb setup.
 
       const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
       Particles tagIdHadrons;
       if (tagPID == 5) tagIdHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
       else if (tagPID == 4) tagIdHadrons = HHs.cHadrons(Cuts::pT > 5*GeV);
 
-      //histogram filling
-      // double z_pt;
-      // if ( ee_event ) z_pt = zees[0].pt();
-      // if ( mm_event ) z_pt = zmumus[0].pt();
-      // Do we need a z_pt > 20*GeV cut here?
 
+      //histogram filling
       if ((ee_event || mm_event) && goodjets.size() > 0) {
-        _h_fidxsec->fill(0.5,w);
         double Ht = 0;
 
         for (const Jet& j : goodjets) {
@@ -651,14 +631,12 @@ namespace Rivet {
         FourMomentum j1(goodjets[0].momentum());
 
         _h_first_jet_pt->fill(j1.pt(),w);
-        _h_pTj1_highPT->fill(j1.pt(),w);
         _h_first_jet_pt_by_cat[cat]->fill(j1.pt(),w);
         _h_first_jet_abseta->fill(fabs(j1.eta()),w);
         if ( ee_event ) _h_Z_pt->fill(zees[0].pt(),w);
         if ( mm_event ) _h_Z_pt->fill(zmumus[0].pt(),w);
-        _h_HT->fill(Ht,w);
-        if ( ee_event ) _h_Dphi_Zj->fill(deltaPhi(zees[0], j1),w);
-        if ( mm_event ) _h_Dphi_Zj->fill(deltaPhi(zmumus[0], j1),w);
+        if ( ee_event ) _h_Z_absy->fill(fabs(zees[0].rap()),w);
+        if ( mm_event ) _h_Z_absy->fill(fabs(zmumus[0].rap()),w);
 
         _h_ang05->fill(ang05(goodjets[0].pseudojet()),w);
         _h_ang10->fill(ang10(goodjets[0].pseudojet()),w);
@@ -666,21 +644,18 @@ namespace Rivet {
         _h_mass->fill(j1.mass()/j1.pt(),w);
 
         if ( jb_final.size() > 0 ) {
-          _h_fidxsec_b->fill(0.5,w);
 
           FourMomentum b1(jb_final[0].momentum());
 
-          _h_bjet_multiplicity->fill(1.,w);
+          _h_bjet_multiplicity->fill(jb_final.size(),w);
 
           _h_first_bjet_pt_b->fill(b1.pt(),w);
-          _h_pTb1_highPT->fill(b1.pt(),w);
           _h_first_bjet_pt_by_cat[cat]->fill(j1.pt(),w);
           _h_first_bjet_abseta_b->fill(fabs(b1.eta()),w);
           if ( ee_event ) _h_Z_pt_b->fill(zees[0].pt(),w);
           if ( mm_event ) _h_Z_pt_b->fill(zmumus[0].pt(),w);
-          _h_HT_b->fill(Ht,w);
-          if ( ee_event ) _h_Dphi_Zb_b->fill(deltaPhi(zees[0], b1.phi()),w);
-          if ( mm_event ) _h_Dphi_Zb_b->fill(deltaPhi(zmumus[0], b1.phi()),w);
+          if ( ee_event ) _h_Z_absy_b->fill(fabs(zees[0].rap()),w);
+          if ( mm_event ) _h_Z_absy_b->fill(fabs(zmumus[0].rap()),w);
 
           _h_ang05_b->fill(ang05(jb_final[0].pseudojet()),w);
           _h_ang10_b->fill(ang10(jb_final[0].pseudojet()),w);
@@ -693,53 +668,6 @@ namespace Rivet {
             _h_bbcorr->fill(dR,relPt,w);
             if (alg1_lead_is_btagged && !alg2_lead_is_btagged)
               _h_bbcorr_2->fill(dR,relPt,w);
-          }
-
-          if ( jb_final.size() > 1 ) {
-
-            FourMomentum b2(jb_final[1].momentum());
-
-            _h_bjet_multiplicity->fill(2.,w);
-
-            _h_first_bjet_pt_bb->fill(b1.pt(),w);
-            _h_second_bjet_pt_bb->fill(b2.pt(),w);
-            if ( ee_event ) _h_Z_pt_bb->fill(zees[0].pt(),w);
-            if ( mm_event ) _h_Z_pt_bb->fill(zmumus[0].pt(),w);
-
-            FourMomentum bb = add(b1,b2);
-            FourMomentum Zbb;
-            if (ee_event) Zbb = add(zees[0],bb);
-            if (mm_event) Zbb = add(zmumus[0],bb);
-
-            _h_bb_mass_bb->fill(bb.mass(),w);
-            _h_Zbb_mass_bb->fill(Zbb.mass(),w);
-
-            _h_Dphi_bb->fill(deltaPhi(b1,b2),w);
-            if (deltaR(b1,b2)>0.5) {
-              _h_DR_bb->fill(deltaR(b1,b2),w);
-            }
-
-            double DR_Z_b1(0.), DR_Z_b2(0.);
-            if ( ee_event ) {
-              DR_Z_b1 = deltaR(zees[0],b1);
-              DR_Z_b2 = deltaR(zees[0],b2);
-            }
-            if ( mm_event ) {
-              DR_Z_b1 = deltaR(zmumus[0],b1);
-              DR_Z_b2 = deltaR(zmumus[0],b2);
-            }
-
-            double DR_Zb_min = DR_Z_b1;
-            double DR_Zb_max = DR_Z_b2;
-            if ( DR_Zb_min > DR_Zb_max ) {
-              DR_Zb_min = DR_Z_b2;
-              DR_Zb_max = DR_Z_b1;
-            }
-            double A_Zbb = (DR_Zb_max - DR_Zb_min)/(DR_Zb_max + DR_Zb_min);
-
-            _h_DR_Zbmin_bb->fill(DR_Zb_min,w);
-            _h_A_DR_Zb_bb->fill(A_Zbb,w);
-
           }
 
         }
@@ -758,84 +686,40 @@ namespace Rivet {
       MSG_INFO("SumW          = " << std::setfill(' ') << std::setw(14) << std::fixed << std::setprecision(3) << sumOfWeights());
       MSG_INFO("Norm factor   = " << std::setfill(' ') << std::setw(14) << std::fixed << std::setprecision(6) << norm);
 
-      scale( _h_first_bjet_pt_b, 100. );
-      scale( _h_first_bjet_abseta_b, 100. );
-      scale( _h_Z_pt_b, 100. );
-      scale( _h_HT_b, 100. );
-      scale( _h_Dphi_Zb_b, 100. );
+      scale( _h_first_bjet_pt_b, norm );
+      scale( _h_first_bjet_abseta_b, norm );
+      scale( _h_Z_pt_b, norm );
+      scale( _h_Z_absy_b, norm );
 
-      divide( _h_first_bjet_pt_b , _h_first_jet_pt , _h_first_jet_pt_ratio );
-      divide( _h_first_bjet_abseta_b , _h_first_jet_abseta , _h_first_jet_abseta_ratio );
-      divide( _h_Z_pt_b , _h_Z_pt , _h_Z_pt_ratio );
-      divide( _h_HT_b , _h_HT , _h_HT_ratio );
-      divide( _h_Dphi_Zb_b , _h_Dphi_Zj , _h_Dphi_Zj_ratio );
-
-      scale( _h_first_bjet_pt_b, norm/100. );
-      scale( _h_first_bjet_abseta_b, norm/100. );
-      scale( _h_Z_pt_b, norm/100. );
-      scale( _h_HT_b, norm/100. );
-      scale( _h_Dphi_Zb_b, norm/100. );
-
-      scale( _h_fidxsec, norm);
-      scale( _h_fidxsec_b, norm);
-
-      scale( _h_pTb1_highPT, norm);
-      scale( _h_pTj1_highPT, norm);
-
-      scale( _h_first_jet_pt, norm);
-      scale( _h_first_jet_abseta, norm);
-      scale( _h_Z_pt, norm);
-      scale( _h_HT, norm);
-      scale( _h_Dphi_Zj, norm);
-
-      scale( _h_first_bjet_pt_bb, norm);
-      scale( _h_second_bjet_pt_bb, norm);
-      scale( _h_Z_pt_bb, norm);
-      scale( _h_bb_mass_bb, norm);
-      scale( _h_Zbb_mass_bb, norm);
-      scale( _h_Dphi_bb, norm);
-      scale( _h_DR_bb, norm);
-      scale( _h_DR_Zbmin_bb, norm);
-      scale( _h_A_DR_Zb_bb, norm);
+      scale( _h_first_jet_pt, norm );
+      scale( _h_first_jet_abseta, norm );
+      scale( _h_Z_pt, norm );
+      scale( _h_Z_absy, norm );
 
       scale( _h_bjet_multiplicity, norm );
 
-      scale( _h_compare, norm);
-      scale( _h_ang05, norm);
-      scale( _h_ang10, norm);
-      scale( _h_ang20, norm);
-      scale( _h_mass, norm);
-      scale( _h_ang05_b, norm);
-      scale( _h_ang10_b, norm);
-      scale( _h_ang20_b, norm);
-      scale( _h_mass_b, norm);
+      normalize(_h_compare);
+      normalize(_h_ang05);
+      normalize(_h_ang10);
+      normalize(_h_ang20);
+      normalize(_h_mass);
+      normalize(_h_ang05_b);
+      normalize(_h_ang10_b);
+      normalize(_h_ang20_b);
+      normalize(_h_mass);
 
-      scale( _h_bbcorr, norm);
-      scale( _h_bbcorr_2, norm);
+      normalize(_h_bbcorr);
+      normalize(_h_bbcorr_2);
     }
 
   private:
 
     /// @name Histograms
 
-    Histo1DPtr     _h_fidxsec, _h_fidxsec_b;
-
-    Histo1DPtr     _h_first_jet_pt, _h_first_bjet_pt_b, _h_pTj1_highPT, _h_pTb1_highPT;
+    Histo1DPtr     _h_first_jet_pt, _h_first_bjet_pt_b;
     Histo1DPtr     _h_first_jet_abseta, _h_first_bjet_abseta_b;
     Histo1DPtr     _h_Z_pt, _h_Z_pt_b;
-    Histo1DPtr     _h_HT, _h_HT_b;
-    Histo1DPtr     _h_Dphi_Zj, _h_Dphi_Zb_b;
-
-    Scatter2DPtr   _h_first_jet_pt_ratio;
-    Scatter2DPtr   _h_first_jet_abseta_ratio;
-    Scatter2DPtr   _h_Z_pt_ratio;
-    Scatter2DPtr   _h_HT_ratio;
-    Scatter2DPtr   _h_Dphi_Zj_ratio;
-
-    Histo1DPtr     _h_first_bjet_pt_bb, _h_second_bjet_pt_bb;
-    Histo1DPtr     _h_Z_pt_bb;
-    Histo1DPtr     _h_bb_mass_bb, _h_Zbb_mass_bb;
-    Histo1DPtr     _h_Dphi_bb, _h_DR_bb, _h_DR_Zbmin_bb, _h_A_DR_Zb_bb;
+    Histo1DPtr     _h_Z_absy, _h_Z_absy_b;
 
     Histo1DPtr     _h_bjet_multiplicity;
 
@@ -888,6 +772,8 @@ namespace Rivet {
       CMP2 = 9
     };
 
+    bool LHCbJets = false;
+
     int tagPID = 5;
 
     std::string flavAlgName() {
@@ -906,13 +792,16 @@ namespace Rivet {
 
 
   // The hook for the plugin system
-  DECLARE_RIVET_PLUGIN(FlavAlgAnalysis);
+  DECLARE_RIVET_PLUGIN(FlavAlgAnalysisLHCb);
 
   #ifdef hepmc3
     bool FinalSPPartons::accept(const Particle& p) const {
       // Reject if *not* a parton
       if (!isParton(p))
-        return false;
+        {
+           return false;
+        }
+      else return _cuts->accept(p);
       if (p.genParticle()->end_vertex() and p.genParticle()->production_vertex()) {
         // Accept partons if they end on a standard hadronization vertex
         if (p.genParticle()->end_vertex()->status() == 5) {
