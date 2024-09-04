@@ -812,6 +812,14 @@ namespace Rivet {
 
       scale( _h_bbcorr, norm);
       scale( _h_bbcorr_2, norm);
+
+      for ( auto h : _h_first_jet_pt_by_cat ) {
+        scale(h, norm);
+      }
+      for ( auto h : _h_first_bjet_pt_by_cat ) {
+        scale(h, norm);
+      }
+
     }
 
   private:
