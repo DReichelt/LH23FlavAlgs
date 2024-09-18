@@ -635,12 +635,12 @@ namespace Rivet {
       else if (tagPID == 4) tagIdHadrons = HHs.cHadrons(Cuts::pT > 5*GeV);
 
       //histogram filling
-      // double z_pt;
-      // if ( ee_event ) z_pt = zees[0].pt();
-      // if ( mm_event ) z_pt = zmumus[0].pt();
+      double z_pt;
+      if ( ee_event ) z_pt = zees[0].pt();
+      if ( mm_event ) z_pt = zmumus[0].pt();
       // Do we need a z_pt > 20*GeV cut here?
 
-      if ((ee_event || mm_event) && goodjets.size() > 0) {
+      if ((ee_event || mm_event) && goodjets.size() > 0 && z_pt > 40.*GeV) {
         _h_fidxsec->fill(0.5,w);
         double Ht = 0;
 
