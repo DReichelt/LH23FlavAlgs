@@ -828,6 +828,9 @@ namespace Rivet {
       scale( _h_bbcorr, norm);
       scale( _h_bbcorr_2, norm);
 
+      scale( _h_pTb1_nb, norm);
+      scale( _h_pTb1_nb2, norm);
+
       for ( auto h : _h_first_jet_pt_by_cat ) {
         scale(h, norm);
       }
@@ -868,6 +871,9 @@ namespace Rivet {
 
     Histo2DPtr     _h_bbcorr;
     Histo2DPtr     _h_bbcorr_2;
+
+    Histo2DPtr     _h_pTb1_nb;
+    Histo2DPtr     _h_pTb1_nb2;
 
     enum {
       LEAD_TAGGED_BOTH = 0,
