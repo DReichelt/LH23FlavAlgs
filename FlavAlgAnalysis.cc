@@ -346,6 +346,9 @@ namespace Rivet {
       book(_h_pTb1_highPT, "bjet_pT_highPT",  40, 200., 1200.);
       book(_h_pTj1_highPT, "jet_pT_highPT" , 40, 200., 1200.);
 
+      book(_h_pTb1_nb , "pTb1_nb" , 10,200.,1200.,20,0,20.);
+      book(_h_pTb1_nb2, "pTb1_nb2", 10,200.,1200.,20,0,20.);
+
       ang05 = Angularity(0.5, R);
       ang10 = Angularity(1.0, R);
       ang20 = Angularity(2.0, R);
@@ -630,6 +633,10 @@ namespace Rivet {
       _h_compare->fill(cat,w);
 
       const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
+      unsigned nb_event = 0;
+      if (tagPID == 5) for (auto &el : HHs.bHadrons()) nb_event++;
+      else if (tagPID == 4) for (auto &el : HHs.cHadrons()) nb_event++;
+
       Particles tagIdHadrons;
       if (tagPID == 5) tagIdHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
       else if (tagPID == 4) tagIdHadrons = HHs.cHadrons(Cuts::pT > 5*GeV);
@@ -694,6 +701,14 @@ namespace Rivet {
             if (alg1_lead_is_btagged && !alg2_lead_is_btagged)
               _h_bbcorr_2->fill(dR,relPt,w);
           }
+
+          _h_pTb1_nb->fill(b1.pT(),nb_event,w);
+          unsigned nb_bj1 = 0;
+          for (const auto &el : jb_final[0].constituents())
+            if (tagPID ==5 && el.hasBottom()) nb_bj1++;
+            else if (tagPID == 4 && el.hasCharm()) nb_bj1++;
+
+          _h_pTb1_nb2->fill(b1.pT(),nb_bj1,w);
 
           if ( jb_final.size() > 1 ) {
 
