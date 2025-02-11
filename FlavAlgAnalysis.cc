@@ -349,8 +349,10 @@ namespace Rivet {
       book(_h_pTb1_highPT, "bjet_pT_highPT",  40, 200., 1200.);
       book(_h_pTj1_highPT, "jet_pT_highPT" , 40, 200., 1200.);
 
-      book(_h_pTb1_nb , "pTb1_nb" , 10,200.,1200.,20,0,20.);
-      book(_h_pTb1_nb2, "pTb1_nb2", 10,200.,1200.,20,0,20.);
+      book(_h_pTb1_nb , "pTb1_nb" , 12,30.,1230.,20,0,20.);
+      book(_h_pTb1_nb2, "pTb1_nb2", 12,30.,1230.,20,0,20.);
+
+      book(_h_pTb1_nb_o , "pTb1_nb_o" , 12,30.,1230.,20,0,20.);
 
       ang05 = Angularity(0.5, R);
       ang10 = Angularity(1.0, R);
@@ -485,6 +487,15 @@ namespace Rivet {
 
         //identification of bjets/cjets
         for (unsigned int i=0; i<goodjets.size(); i++ ) {
+          if (debug)
+            {
+              std::cout << "FlavHistory::current_flavour_of(goodjets[i])[0] = " << FlavHistory::current_flavour_of(goodjets[i])[0] << std::endl;
+              std::cout << "FlavHistory::current_flavour_of(goodjets[i])[1] = " << FlavHistory::current_flavour_of(goodjets[i])[1] << std::endl;
+              std::cout << "FlavHistory::current_flavour_of(goodjets[i])[2] = " << FlavHistory::current_flavour_of(goodjets[i])[2] << std::endl;
+              std::cout << "FlavHistory::current_flavour_of(goodjets[i])[3] = " << FlavHistory::current_flavour_of(goodjets[i])[3] << std::endl;
+              std::cout << "FlavHistory::current_flavour_of(goodjets[i])[4] = " << FlavHistory::current_flavour_of(goodjets[i])[4] << std::endl;
+              std::cout << "FlavHistory::current_flavour_of(goodjets[i])[5] = " << FlavHistory::current_flavour_of(goodjets[i])[5] << std::endl;
+            }
           const bool btagged =  std::abs(FlavHistory::current_flavour_of(goodjets[i])[tagPID]%2) == 1;
           if (btagged) {
             if(jb_final.size() == 0) {
@@ -718,6 +729,7 @@ namespace Rivet {
           }
 
           _h_pTb1_nb->fill(b1.pT(),nb_event,w);
+          _h_pTb1_nb_o->fill(b1.pT(),nb_event_open,w);
           unsigned nb_bj1 = 0;
           for (const auto &el : jb_final[0].constituents())
             if (tagPID ==5 && el.hasBottom()) nb_bj1++;
@@ -846,6 +858,8 @@ namespace Rivet {
       scale( _h_pTb1_nb, norm);
       scale( _h_pTb1_nb2, norm);
 
+      scale( _h_pTb1_nb_o, norm);
+
       for ( auto h : _h_first_jet_pt_by_cat ) {
         scale(h, norm);
       }
@@ -889,6 +903,8 @@ namespace Rivet {
 
     Histo2DPtr     _h_pTb1_nb;
     Histo2DPtr     _h_pTb1_nb2;
+
+    Histo2DPtr     _h_pTb1_nb_o;
 
     enum {
       LEAD_TAGGED_BOTH = 0,
