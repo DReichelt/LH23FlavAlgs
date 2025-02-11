@@ -149,6 +149,9 @@ namespace Rivet {
       HeavyHadrons HHs(Cuts::pT > 5*GeV);
       declare(HHs, "HeavyHadrons");
 
+      HeavyHadrons HHsOpen(Cuts::OPEN);
+      declare(HHsOpen, "HeavyHadronsOpen");
+
       ZFinder zeeFinder(fs, Cuts::abseta < 2.4 && Cuts::pT > 20*GeV, PID::ELECTRON, 71.0*GeV, 111.0*GeV, 0.1 );
       declare(zeeFinder, "ZeeFinder");
 
@@ -632,10 +635,22 @@ namespace Rivet {
       const double w = 0.5;
       _h_compare->fill(cat,w);
 
-      const HeavyHadrons& HHs = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
+      const HeavyHadrons& HHs     = applyProjection<HeavyHadrons>(event, "HeavyHadrons");
+      const HeavyHadrons& HHsOpen = applyProjection<HeavyHadrons>(event, "HeavyHadronsOpen");
       unsigned nb_event = 0;
       if (tagPID == 5) for (auto &el : HHs.bHadrons()) nb_event++;
       else if (tagPID == 4) for (auto &el : HHs.cHadrons()) nb_event++;
+      
+
+      unsigned nb_event_open = 0;
+      if (tagPID == 5) for (auto &el : HHsOpen.bHadrons()) nb_event_open++;
+      else if (tagPID == 4) for (auto &el : HHsOpen.cHadrons()) nb_event_open++;
+
+      if (debug)
+        {
+          std::cout << "nb_event      = " << nb_event << std::endl;
+          std::cout << "nb_event_open = " << nb_event_open << std::endl;
+        }
 
       Particles tagIdHadrons;
       if (tagPID == 5) tagIdHadrons = HHs.bHadrons(Cuts::pT > 5*GeV);
