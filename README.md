@@ -16,6 +16,8 @@ Code implementing the algorithms is available as [fastjet](https://fastjet.fr) c
 
 The analyses can be compiled as plugins to the [Rivet](https://rivet.hepforge.org) analysis framework, see documentation there for details, and depend on having fastjet contrib installed.
 
-### FlavAlgAnalysis:
+### FlavAlgAnalysis
 
-Selection criteria are loosely inspired by the CMS analysis [arXiv:1611.06507](https://arxiv.org/abs/1611.06507), and the corresponding [Rivet analysis code](https://rivet.hepforge.org/analyses/CMS_2017_I1499471.html). `FlavAlgAnalysis.yoda` contains the original reference files from Rivet, used to inherit binning for some histograms.
+Analysis used for plots in Appendix C of [arXiv:2506.XXXXX](https://arxiv.org/abs/2506.XXXXX). 
+
+The selection criteria are loosely inspired by the CMS analysis [arXiv:1611.06507](https://arxiv.org/abs/1611.06507), and the corresponding [Rivet analysis code](https://rivet.hepforge.org/analyses/CMS_2017_I1499471.html). `FlavAlgAnalysis.yoda` contains the original reference files from Rivet, used to inherit binning for some histograms.
