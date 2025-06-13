@@ -1,4 +1,4 @@
-# Rivet analyses comparing flavour algorithms for PhysTeV 2023 study
+# Comparing flavoured jet algorithms | PhysTeV 2023
 
 Analyses as used in [arXiv:2506.XXXXX](https://arxiv.org/abs/2506.XXXXX) to compare apporaches to infrared save definition of anti - $k_t$ jets.
 
@@ -18,4 +18,4 @@ The analyses can be compiled as plugins to the [Rivet](https://rivet.hepforge.or
 
 ### FlavAlgAnalysis:
 
-Selection criteria are loosely inspired by the CMS analysis [arXiv:1611.06507](https://arxiv.org/abs/1611.06507), and the corresponding [Rivet analysis code](https://rivet.hepforge.org/analyses/CMS_2017_I1499471.html). `FlavAlgAnalysis.yoda` contains the original reference yodas from Rivet, used to inherit binning for some histograms.
+Selection criteria are loosely inspired by the CMS analysis [arXiv:1611.06507](https://arxiv.org/abs/1611.06507), and the corresponding [Rivet analysis code](https://rivet.hepforge.org/analyses/CMS_2017_I1499471.html). `FlavAlgAnalysis.yoda` contains the original reference files from Rivet, used to inherit binning for some histograms.
