@@ -10,11 +10,11 @@ References for algorithms:
 - IFN: [arXiv:2306.07314](https://arxiv.org/abs/2306.07314)
 - WTA: [arXiv:2205.01117](https://arxiv.org/abs/2205.01117)
 
-Code implementing the algorithms in isolation is available as [fastjet](https://fastjet.fr) contribs.
+Code implementing the algorithms is available as [fastjet](https://fastjet.fr) contribs.
 
 ## Details on analyses
 
-The analyses can be compiled as plugins to the [Rivet](https://rivet.hepforge.org) analysis framework, see documentation there for details.
+The analyses can be compiled as plugins to the [Rivet](https://rivet.hepforge.org) analysis framework, see documentation there for details, and depend on having fastjet contrib installed.
 
 ### FlavAlgAnalysis:
 
