@@ -13,7 +13,7 @@
 #include "fastjet/contrib/IFNPlugin.hh"
 #include "fastjet/contrib/CMPPlugin.hh"
 #include "fastjet/contrib/GHSAlgo.hh"
-#include "fastjet/contrib/SDFlavPlugin.hh"
+#include "fastjet/contrib/SDFPlugin.hh"
 
 //#define DebugLog
 
@@ -334,7 +334,7 @@ namespace Rivet {
                           PID::MUON, 71.0*GeV, 111.0*GeV, 0.1 );
       declare(zmumuFinder, "ZmumuFinder");
 
-#ifdef hepmc3
+#ifdef RIVET_ENABLE_HEPMC_3
       cout << " USING HEPMC3 " << endl;
       VetoedFinalState jetConstits = ( getOption("LEVEL","HADRON") == "HADRON" ) ?
         VetoedFinalState(VisibleFinalState(fs))
@@ -936,7 +936,7 @@ namespace Rivet {
   // The hook for the plugin system
   DECLARE_RIVET_PLUGIN(FlavAlgAnalysis);
 
-#ifdef hepmc3
+#ifdef RIVET_ENABLE_HEPMC_3
   /// Final state accessing the intermediate partonic final-state
   /// resulting from the parton shower, prior to hadronisation
   /// (based on code frim arXiv:2012.09574, arXiv:2112.09545)
