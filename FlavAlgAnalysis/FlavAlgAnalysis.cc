@@ -245,14 +245,12 @@ namespace Rivet {
 
       // do the actual coputation
       double numerator = 0.0, denominator = 0.0;
-      unsigned int num = 0;
       for ( const auto &c : constits ) {
         if ( !_constitCut.pass(c) ) continue;
         double pt = c.pt();
         // Note: better compute (dist^2)^(alpha/2) to avoid an extra square root
         numerator   += pow(pt, _kappa) * pow(c.squared_distance(reference_axis), 0.5*_alpha);
         denominator += pt;
-        num += 1;
       }
       if ( denominator == 0 ) return -1;
       // the formula is only correct for the the typical angularities,
@@ -468,8 +466,6 @@ namespace Rivet {
       bool ee_event = (   zees.size() == 1 ) ? true : false;
       bool mm_event = ( zmumus.size() == 1 ) ? true : false;
 
-      const Particles& theLeptons = ee_event ? zeeFS.constituents() : zmumuFS.constituents();
-
       if (debug) {
         std::cout << "~~~~~~~~~~~~Event in rivet \n";
         for ( unsigned int i=0; i < event.allParticles().size(); i++ ) {
@@ -628,13 +624,14 @@ namespace Rivet {
       }
 
       unsigned nb_event = 0;
-      if (tagPID == 5) for (auto &el : HHs.bHadrons()) nb_event++;
-      else if (tagPID == 4) for (auto &el : HHs.cHadrons()) nb_event++;
+      
+      if (tagPID == 5) nb_event = HHs.bHadrons().size();
+      else if (tagPID == 4) nb_event = HHs.cHadrons().size();
 
 
       unsigned nb_event_open = 0;
-      if (tagPID == 5) for (auto &el : HHsOpen.bHadrons()) nb_event_open++;
-      else if (tagPID == 4) for (auto &el : HHsOpen.cHadrons()) nb_event_open++;
+      if (tagPID == 5) nb_event_open = HHsOpen.bHadrons().size();
+      else if (tagPID == 4) nb_event_open = HHsOpen.cHadrons().size();
 
       if (debug)
       {
